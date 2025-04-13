@@ -36,9 +36,7 @@ import type { YoutubeVideo } from "@shared/schema";
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
-  tags: z.string().optional().transform(tags => 
-    tags ? tags.split(',').map(tag => tag.trim()) : []
-  ),
+  tags: z.string().optional(),
   thumbnailUrl: z.string().optional(),
   videoUrl: z.string().optional(),
   visibility: z.enum(["private", "public", "unlisted"]).default("private"),
@@ -153,10 +151,16 @@ export function YoutubeVideoForm({
 
   // Handle form submission
   const onSubmit = (values: FormValues) => {
+    // Convert comma-separated tags to array
+    const processedValues = {
+      ...values,
+      tags: values.tags ? values.tags.split(',').map(tag => tag.trim()) : []
+    };
+    
     if (videoToEdit) {
-      updateMutation.mutate({ ...values, id: videoToEdit.id });
+      updateMutation.mutate({ ...processedValues, id: videoToEdit.id });
     } else {
-      createMutation.mutate(values);
+      createMutation.mutate(processedValues);
     }
   };
 
