@@ -7,7 +7,7 @@ import {
   attachments, type Attachment, type InsertAttachment
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -133,7 +133,9 @@ export class DatabaseStorage implements IStorage {
 
       // Get all the member projects
       const allMemberProjects = memberProjectIds.length > 0 
-        ? await db.select().from(projects).where(inArray(projects.id, memberProjectIds))
+        ? await db.select().from(projects).where(
+            sql`${projects.id} IN (${memberProjectIds.join(',')})`
+          )
         : [];
         
       // Filter out any projects already in userProjects (created by the user)
@@ -174,7 +176,9 @@ export class DatabaseStorage implements IStorage {
       
       // Delete contents in these columns
       if (columnIds.length > 0) {
-        await db.delete(contents).where(contents.columnId.in(columnIds));
+        await db.delete(contents).where(
+          sql`${contents.columnId} IN (${columnIds.join(',')})`
+        );
       }
       
       // Delete columns
@@ -228,7 +232,10 @@ export class DatabaseStorage implements IStorage {
     }
     
     const userIds = memberships.map(m => m.userId);
-    return await db.select().from(users).where(users.id.in(userIds));
+    if (userIds.length === 0) return [];
+    return await db.select().from(users).where(
+      sql`${users.id} IN (${userIds.join(',')})`
+    );
   }
 
   // Column operations
@@ -313,7 +320,9 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(contents)
-      .where(contents.columnId.in(columnIds))
+      .where(
+        sql`${contents.columnId} IN (${columnIds.join(',')})`
+      )
       .orderBy(contents.order);
   }
 
