@@ -34,13 +34,13 @@ export function Sidebar({ projects, isOpen, onToggle, onNewProject }: SidebarPro
           <h2 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Workspace</h2>
         </div>
         <Link href="/">
-          <a className={cn(
-            "flex items-center px-3 py-2 text-sm font-medium",
+          <div className={cn(
+            "flex items-center px-3 py-2 text-sm font-medium cursor-pointer",
             location === "/" ? "text-primary border-l-2 border-primary bg-primary/5" : "text-neutral-700 hover:text-primary hover:bg-neutral-100"
           )}>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
             <span>Dashboard</span>
-          </a>
+          </div>
         </Link>
         <a className="flex items-center px-3 py-2 text-sm font-medium text-neutral-700 hover:text-primary hover:bg-neutral-100">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
@@ -58,8 +58,8 @@ export function Sidebar({ projects, isOpen, onToggle, onNewProject }: SidebarPro
             </div>
             {projects.map(project => (
               <Link key={project.id} href={`/projects/${project.id}`}>
-                <a className={cn(
-                  "flex items-center px-3 py-2 text-sm font-medium",
+                <div className={cn(
+                  "flex items-center px-3 py-2 text-sm font-medium cursor-pointer",
                   location === `/projects/${project.id}` ? "text-primary border-l-2 border-primary bg-primary/5" : "text-neutral-700 hover:text-primary hover:bg-neutral-100"
                 )}>
                   {project.type.includes("YouTube") ? (
@@ -68,7 +68,7 @@ export function Sidebar({ projects, isOpen, onToggle, onNewProject }: SidebarPro
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 text-purple-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19.439 7.85c-.049.322.059.648.289.878l1.568 1.568c.47.47.706 1.087.706 1.704s-.235 1.233-.706 1.704l-1.611 1.611a.98.98 0 0 1-.837.276c-.47-.07-.802-.48-.743-.953l.093-.778v-.027c.04-.348-.12-.701-.427-.843a11.735 11.735 0 0 0-2.17-.676c-.34-.07-.69.062-.852.358l-.166.344c-.339.665-1.01 1.06-1.724 1.01-.543-.04-1.03-.34-1.318-.806l-1.033-1.665c-.881-1.442-.413-3.937.274-5.175L12 7.053a.98.98 0 0 1 .905-.31c.681.136 1.286-.29 1.36-.984.163-1.397.35-2.351.628-3.094a.98.98 0 0 1 .653-.623l.992-.248c.34-.085.693.037.885.298.713.967 1.715 3.544 1.931 5.42l.085.647Z"></path><path d="M12.734 15.6c-.381-.67-1.376-.795-2.22-.281-.844.514-1.22 1.472-.839 2.142.381.67 1.376.795 2.22.281.844-.514 1.22-1.472.839-2.142Z"></path></svg>
                   )}
                   <span>{project.name}</span>
-                </a>
+                </div>
               </Link>
             ))}
           </>
