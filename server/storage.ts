@@ -7,7 +7,7 @@ import {
   attachments, type Attachment, type InsertAttachment
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -111,30 +111,41 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getProjectsByUserId(userId: number): Promise<Project[]> {
-    // Get projects created by user
-    const userProjects = await db.select().from(projects).where(eq(projects.createdBy, userId));
-    
-    // Get projects where user is a member
-    const userMemberships = await db.select({
-      projectId: projectMembers.projectId
-    }).from(projectMembers).where(eq(projectMembers.userId, userId));
-    
-    const memberProjectIds = userMemberships.map(m => m.projectId);
-    
-    // If no member projects, just return user's own projects
-    if (memberProjectIds.length === 0) {
-      return userProjects;
-    }
+    try {
+      console.log(`Getting projects for user ID: ${userId}`);
+      
+      // Get projects created by user
+      const userProjects = await db.select().from(projects).where(eq(projects.createdBy, userId));
+      console.log(`Found ${userProjects.length} projects created by user`);
+      
+      // Get projects where user is a member
+      const userMemberships = await db.select({
+        projectId: projectMembers.projectId
+      }).from(projectMembers).where(eq(projectMembers.userId, userId));
+      
+      const memberProjectIds = userMemberships.map(m => m.projectId);
+      console.log(`User is a member of ${memberProjectIds.length} projects`);
+      
+      // If no member projects, just return user's own projects
+      if (memberProjectIds.length === 0) {
+        return userProjects;
+      }
 
-    // Get the member projects (excluding any already in userProjects)
-    const memberProjects = await db.select()
-      .from(projects)
-      .where(and(
-        projects.id.in(memberProjectIds),
-        projects.createdBy !== userId
-      ));
-    
-    return [...userProjects, ...memberProjects];
+      // Get all the member projects
+      const allMemberProjects = memberProjectIds.length > 0 
+        ? await db.select().from(projects).where(inArray(projects.id, memberProjectIds))
+        : [];
+        
+      // Filter out any projects already in userProjects (created by the user)
+      const ownProjectIds = new Set(userProjects.map(p => p.id));
+      const memberProjects = allMemberProjects.filter(p => !ownProjectIds.has(p.id));
+      
+      console.log(`Returning ${userProjects.length + memberProjects.length} total projects`);
+      return [...userProjects, ...memberProjects];
+    } catch (error) {
+      console.error("Error in getProjectsByUserId:", error);
+      throw error;
+    }
   }
 
   async createProject(insertProject: InsertProject): Promise<Project> {
@@ -230,23 +241,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getColumnWithContents(columnId: number): Promise<ColumnWithContents | undefined> {
-    const [column] = await db.select().from(columns).where(eq(columns.id, columnId));
-    if (!column) return undefined;
+    try {
+      const [column] = await db.select().from(columns).where(eq(columns.id, columnId));
+      if (!column) return undefined;
 
-    const columnContents = await this.getContentByColumn(columnId);
-    
-    // Get assignees and attachment counts for each content
-    const contentsWithAssignees: ContentWithAssignee[] = await Promise.all(
-      columnContents.map(async (content) => {
-        const contentWithAssignee = await this.getContentWithAssignee(content.id);
-        return contentWithAssignee || content;
-      })
-    );
-    
-    return {
-      ...column,
-      contents: contentsWithAssignees
-    };
+      const columnContents = await this.getContentByColumn(columnId);
+      
+      // Get assignees and attachment counts for each content
+      const contentsWithAssignees: ContentWithAssignee[] = await Promise.all(
+        columnContents.map(async (content) => {
+          const contentWithAssignee = await this.getContentWithAssignee(content.id);
+          return contentWithAssignee || content;
+        })
+      );
+      
+      return {
+        ...column,
+        contents: contentsWithAssignees
+      };
+    } catch (error) {
+      console.error(`Error in getColumnWithContents for columnId ${columnId}:`, error);
+      throw error;
+    }
   }
 
   async createColumn(insertColumn: InsertColumn): Promise<Column> {
