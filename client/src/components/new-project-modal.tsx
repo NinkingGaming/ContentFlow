@@ -57,14 +57,15 @@ export function NewProjectModal({ isOpen, onClose, users }: NewProjectModalProps
     try {
       setIsSubmitting(true);
       
-      const response = await apiRequest("POST", "/api/projects", {
-        name,
-        description,
-        type,
-        memberIds: selectedUsers.map(u => u.id)
+      const project = await apiRequest("/api/projects", {
+        method: "POST",
+        body: JSON.stringify({
+          name,
+          description,
+          type,
+          memberIds: selectedUsers.map(u => u.id)
+        })
       });
-      
-      const project = await response.json();
       
       // Invalidate projects query
       await queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
