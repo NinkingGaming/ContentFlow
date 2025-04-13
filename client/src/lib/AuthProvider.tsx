@@ -13,12 +13,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await fetch("/api/auth/me", {
-          credentials: "include",
+        const userData = await apiRequest<User | null>("/api/auth/me", {
+          on401: "returnNull"
         });
-
-        if (res.ok) {
-          const userData = await res.json();
+        if (userData) {
           setUser(userData);
         }
       } catch (error) {
@@ -34,8 +32,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (username: string, password: string) => {
     try {
       setIsLoading(true);
-      const res = await apiRequest("POST", "/api/auth/login", { username, password });
-      const userData = await res.json();
+      const userData = await apiRequest<User>("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ username, password })
+      });
 
       setUser(userData);
       toast({
@@ -58,8 +58,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const register = async (userData: any) => {
     try {
       setIsLoading(true);
-      const res = await apiRequest("POST", "/api/auth/register", userData);
-      const newUser = await res.json();
+      const newUser = await apiRequest<User>("/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify(userData)
+      });
 
       setUser(newUser);
       toast({
@@ -82,7 +84,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     try {
       setIsLoading(true);
-      await apiRequest("POST", "/api/auth/logout", {});
+      await apiRequest("/api/auth/logout", {
+        method: "POST"
+      });
       setUser(null);
       
       toast({

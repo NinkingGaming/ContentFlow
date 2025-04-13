@@ -7,22 +7,14 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+export type UnauthorizedBehavior = "returnNull" | "throw";
+
 export async function apiRequest<T = any>(
-  urlOrOptions: string | RequestInit,
-  options?: RequestInit
+  url: string,
+  options?: RequestInit & { on401?: UnauthorizedBehavior }
 ): Promise<T> {
-  let url: string;
-  let config: RequestInit;
-
-  if (typeof urlOrOptions === 'string') {
-    url = urlOrOptions;
-    config = options || {};
-  } else {
-    // This branch is for backward compatibility with the original signature
-    url = options as unknown as string;
-    config = urlOrOptions;
-  }
-
+  const { on401, ...config } = options || {};
+  
   const res = await fetch(url, {
     ...config,
     headers: {
@@ -32,11 +24,14 @@ export async function apiRequest<T = any>(
     credentials: 'include'
   });
 
+  if (on401 === "returnNull" && res.status === 401) {
+    return null as T;
+  }
+
   await throwIfResNotOk(res);
   return res.json();
 }
 
-type UnauthorizedBehavior = "returnNull" | "throw";
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
