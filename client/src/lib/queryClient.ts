@@ -7,20 +7,33 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-export async function apiRequest(
-  method: string,
-  url: string,
-  data?: unknown | undefined,
-): Promise<Response> {
+export async function apiRequest<T = any>(
+  urlOrOptions: string | RequestInit,
+  options?: RequestInit
+): Promise<T> {
+  let url: string;
+  let config: RequestInit;
+
+  if (typeof urlOrOptions === 'string') {
+    url = urlOrOptions;
+    config = options || {};
+  } else {
+    // This branch is for backward compatibility with the original signature
+    url = options as unknown as string;
+    config = urlOrOptions;
+  }
+
   const res = await fetch(url, {
-    method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
+    ...config,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(config.headers || {})
+    },
+    credentials: 'include'
   });
 
   await throwIfResNotOk(res);
-  return res;
+  return res.json();
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";

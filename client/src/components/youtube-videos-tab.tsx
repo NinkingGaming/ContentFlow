@@ -21,13 +21,13 @@ export function YoutubeVideosTab({ projectId }: { projectId: number }) {
   // Query to get all YouTube videos for this project
   const { data: videos, isLoading } = useQuery<YoutubeVideo[]>({
     queryKey: ['/api/projects', projectId, 'youtube-videos'],
-    queryFn: () => apiRequest(`/api/projects/${projectId}/youtube-videos`),
+    queryFn: () => apiRequest<YoutubeVideo[]>(`/api/projects/${projectId}/youtube-videos`),
   });
 
   // Mutation to delete a video
   const deleteVideoMutation = useMutation({
     mutationFn: (videoId: number) => 
-      apiRequest(`/api/youtube-videos/${videoId}`, {
+      apiRequest<{success: boolean}>(`/api/youtube-videos/${videoId}`, {
         method: 'DELETE',
       }),
     onSuccess: () => {

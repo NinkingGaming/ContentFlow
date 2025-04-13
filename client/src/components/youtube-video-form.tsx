@@ -85,7 +85,7 @@ export function YoutubeVideoForm({
       tags: "",
       thumbnailUrl: "",
       videoUrl: "",
-      visibility: "private",
+      visibility: "private" as const,
       category: "",
       playlist: "",
       scheduledPublishTime: undefined,
@@ -95,13 +95,13 @@ export function YoutubeVideoForm({
   // Create mutation for adding a new video
   const createMutation = useMutation({
     mutationFn: (values: FormValues) => 
-      apiRequest('/api/youtube-videos', {
+      apiRequest<YoutubeVideo>('/api/youtube-videos', {
         method: 'POST',
         body: JSON.stringify({
           ...values,
           projectId
         }),
-      } as RequestInit),
+      }),
     onSuccess: () => {
       toast({
         title: 'Video created',
@@ -123,10 +123,10 @@ export function YoutubeVideoForm({
   const updateMutation = useMutation({
     mutationFn: (values: FormValues & { id: number }) => {
       const { id, ...updateData } = values;
-      return apiRequest(`/api/youtube-videos/${id}`, {
+      return apiRequest<YoutubeVideo>(`/api/youtube-videos/${id}`, {
         method: 'PUT',
         body: JSON.stringify(updateData),
-      } as RequestInit);
+      });
     },
     onSuccess: () => {
       toast({
