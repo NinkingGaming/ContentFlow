@@ -1,12 +1,14 @@
 import { 
-  users, User, InsertUser, 
-  projects, Project, InsertProject,
-  projectMembers, ProjectMember, InsertProjectMember,
-  columns, Column, InsertColumn,
-  contents, Content, InsertContent,
-  attachments, Attachment, InsertAttachment,
-  ProjectWithMembers, ColumnWithContents, ContentWithAssignee
+  users, type User, type InsertUser,
+  projects, type Project, type InsertProject,
+  projectMembers, type ProjectMember, type InsertProjectMember,
+  columns, type Column, type InsertColumn,
+  contents, type Content, type InsertContent,
+  attachments, type Attachment, type InsertAttachment
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, and } from "drizzle-orm";
+import { randomUUID } from "crypto";
 
 export interface IStorage {
   // User operations
@@ -52,512 +54,377 @@ export interface IStorage {
   deleteAttachment(id: number): Promise<boolean>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private projects: Map<number, Project>;
-  private projectMembers: Map<string, ProjectMember>;
-  private columns: Map<number, Column>;
-  private contents: Map<number, Content>;
-  private attachments: Map<number, Attachment>;
-  
-  private currentUserId: number;
-  private currentProjectId: number;
-  private currentColumnId: number;
-  private currentContentId: number;
-  private currentAttachmentId: number;
+export type ProjectWithMembers = Project & {
+  members: User[];
+};
 
-  constructor() {
-    this.users = new Map();
-    this.projects = new Map();
-    this.projectMembers = new Map();
-    this.columns = new Map();
-    this.contents = new Map();
-    this.attachments = new Map();
-    
-    this.currentUserId = 1;
-    this.currentProjectId = 1;
-    this.currentColumnId = 1;
-    this.currentContentId = 1;
-    this.currentAttachmentId = 1;
-    
-    // Create demo data
-    this.initDemoData();
-  }
+export type ColumnWithContents = Column & {
+  contents: ContentWithAssignee[];
+};
 
-  private initDemoData() {
-    // Create demo users
-    const user1 = this.createUser({
-      username: "johndoe",
-      password: "password123",
-      displayName: "John Doe",
-      email: "john@example.com",
-      avatarInitials: "JD",
-      avatarColor: "#3B82F6"
-    });
-    
-    const user2 = this.createUser({
-      username: "alexkim",
-      password: "password123",
-      displayName: "Alex Kim",
-      email: "alex@example.com",
-      avatarInitials: "AK",
-      avatarColor: "#8B5CF6"
-    });
-    
-    const user3 = this.createUser({
-      username: "taylor",
-      password: "password123",
-      displayName: "Taylor Moore",
-      email: "taylor@example.com",
-      avatarInitials: "TM",
-      avatarColor: "#10B981"
-    });
+export type ContentWithAssignee = Content & {
+  assignee?: User;
+  attachmentCount?: number;
+};
 
-    // Create demo project
-    const project = this.createProject({
-      name: "Summer Campaign",
-      description: "YouTube video series planning",
-      type: "YouTube Series",
-      createdBy: user1.id
-    });
-
-    // Add project members
-    this.addProjectMember({ projectId: project.id, userId: user1.id });
-    this.addProjectMember({ projectId: project.id, userId: user2.id });
-    this.addProjectMember({ projectId: project.id, userId: user3.id });
-
-    // Create columns
-    const ideation = this.createColumn({
-      projectId: project.id,
-      name: "Ideation",
-      color: "#EAB308", // yellow-500
-      order: 0
-    });
-
-    const preProduction = this.createColumn({
-      projectId: project.id,
-      name: "Pre-Production",
-      color: "#3B82F6", // blue-500
-      order: 1
-    });
-
-    const production = this.createColumn({
-      projectId: project.id,
-      name: "Production",
-      color: "#8B5CF6", // purple-500
-      order: 2
-    });
-
-    const postProduction = this.createColumn({
-      projectId: project.id,
-      name: "Post-Production",
-      color: "#10B981", // green-500
-      order: 3
-    });
-
-    // Create content in ideation
-    this.createContent({
-      title: "Top 10 Summer Travel Hacks",
-      description: "Quick tips for budget-friendly summer travel experiences",
-      type: "Idea",
-      columnId: ideation.id,
-      projectId: project.id,
-      assignedTo: user1.id,
-      dueDate: new Date("2023-06-10"),
-      priority: "Medium",
-      order: 0,
-      createdBy: user1.id
-    });
-    
-    this.createContent({
-      title: "Summer Lookbook 2023",
-      description: "Fashion trends and outfit ideas for summer season",
-      type: "Idea",
-      columnId: ideation.id,
-      projectId: project.id,
-      assignedTo: user3.id,
-      dueDate: new Date("2023-06-08"),
-      priority: "Medium",
-      order: 1,
-      createdBy: user3.id
-    });
-    
-    this.createContent({
-      title: "DIY Backyard Makeover",
-      description: "Budget-friendly ideas to transform your outdoor space",
-      type: "Idea",
-      columnId: ideation.id,
-      projectId: project.id,
-      assignedTo: user2.id,
-      dueDate: new Date("2023-06-05"),
-      priority: "Medium",
-      order: 2,
-      createdBy: user2.id
-    });
-
-    // Create content in pre-production
-    const beachEssentials = this.createContent({
-      title: "Beach Essentials Guide",
-      description: "Must-have items for the perfect beach day",
-      type: "Script",
-      columnId: preProduction.id,
-      projectId: project.id,
-      assignedTo: user1.id,
-      dueDate: new Date("2023-06-12"),
-      priority: "Medium",
-      progress: 75,
-      order: 0,
-      createdBy: user1.id
-    });
-    
-    const summerCocktails = this.createContent({
-      title: "Summer Cocktails Tutorial",
-      description: "Easy recipes for refreshing summer drinks",
-      type: "Storyboard",
-      columnId: preProduction.id,
-      projectId: project.id,
-      assignedTo: user3.id,
-      dueDate: new Date("2023-06-15"),
-      priority: "Medium",
-      progress: 40,
-      order: 1,
-      createdBy: user3.id
-    });
-
-    // Create content in production
-    this.createContent({
-      title: "Summer Outdoor Activities",
-      description: "Fun activities to enjoy during summer",
-      type: "Shooting",
-      columnId: production.id,
-      projectId: project.id,
-      assignedTo: user2.id,
-      dueDate: new Date("2023-06-20"),
-      priority: "High",
-      order: 0,
-      createdBy: user2.id
-    });
-
-    // Add attachments
-    this.createAttachment({
-      contentId: beachEssentials.id,
-      name: "beach_script_v1.txt",
-      url: "/attachments/beach_script_v1.txt",
-      createdBy: user1.id
-    });
-    
-    this.createAttachment({
-      contentId: beachEssentials.id,
-      name: "beach_props_list.txt",
-      url: "/attachments/beach_props_list.txt",
-      createdBy: user1.id
-    });
-    
-    this.createAttachment({
-      contentId: beachEssentials.id,
-      name: "location_ideas.txt",
-      url: "/attachments/location_ideas.txt",
-      createdBy: user1.id
-    });
-    
-    this.createAttachment({
-      contentId: summerCocktails.id,
-      name: "cocktail_recipes.txt",
-      url: "/attachments/cocktail_recipes.txt",
-      createdBy: user3.id
-    });
-    
-    this.createAttachment({
-      contentId: summerCocktails.id,
-      name: "storyboard_draft.txt",
-      url: "/attachments/storyboard_draft.txt",
-      createdBy: user3.id
-    });
-  }
-
+export class DatabaseStorage implements IStorage {
   // User operations
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.email === email
-    );
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentUserId++;
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
     return user;
   }
 
   async getUsers(): Promise<User[]> {
-    return Array.from(this.users.values());
+    return await db.select().from(users);
   }
 
   // Project operations
   async getProject(id: number): Promise<Project | undefined> {
-    return this.projects.get(id);
+    const [project] = await db.select().from(projects).where(eq(projects.id, id));
+    return project;
   }
 
   async getProjectWithMembers(id: number): Promise<ProjectWithMembers | undefined> {
     const project = await this.getProject(id);
     if (!project) return undefined;
-    
+
     const members = await this.getProjectMembers(id);
     return { ...project, members };
   }
 
   async getProjectsByUserId(userId: number): Promise<Project[]> {
-    const memberEntries = Array.from(this.projectMembers.values()).filter(
-      (pm) => pm.userId === userId
-    );
+    // Get projects created by user
+    const userProjects = await db.select().from(projects).where(eq(projects.createdBy, userId));
     
-    const projects: Project[] = [];
-    for (const entry of memberEntries) {
-      const project = await this.getProject(entry.projectId);
-      if (project) projects.push(project);
+    // Get projects where user is a member
+    const userMemberships = await db.select({
+      projectId: projectMembers.projectId
+    }).from(projectMembers).where(eq(projectMembers.userId, userId));
+    
+    const memberProjectIds = userMemberships.map(m => m.projectId);
+    
+    // If no member projects, just return user's own projects
+    if (memberProjectIds.length === 0) {
+      return userProjects;
     }
+
+    // Get the member projects (excluding any already in userProjects)
+    const memberProjects = await db.select()
+      .from(projects)
+      .where(and(
+        projects.id.in(memberProjectIds),
+        projects.createdBy !== userId
+      ));
     
-    return projects;
+    return [...userProjects, ...memberProjects];
   }
 
   async createProject(insertProject: InsertProject): Promise<Project> {
-    const id = this.currentProjectId++;
-    const now = new Date();
-    const project: Project = { ...insertProject, id, createdAt: now };
-    this.projects.set(id, project);
-    
-    // Add creator as a project member
-    await this.addProjectMember({
-      projectId: id,
-      userId: insertProject.createdBy
-    });
-    
+    const [project] = await db
+      .insert(projects)
+      .values(insertProject)
+      .returning();
     return project;
   }
 
   async updateProject(id: number, updates: Partial<InsertProject>): Promise<Project | undefined> {
-    const existingProject = await this.getProject(id);
-    if (!existingProject) return undefined;
-    
-    const updatedProject = { ...existingProject, ...updates };
-    this.projects.set(id, updatedProject);
+    const [updatedProject] = await db
+      .update(projects)
+      .set(updates)
+      .where(eq(projects.id, id))
+      .returning();
     return updatedProject;
   }
 
   async deleteProject(id: number): Promise<boolean> {
-    // Delete all project members
-    const memberEntries = Array.from(this.projectMembers.values()).filter(
-      (pm) => pm.projectId === id
-    );
-    
-    for (const entry of memberEntries) {
-      await this.removeProjectMember(id, entry.userId);
+    // First, delete related content, members, and columns
+    try {
+      // Get columns for this project
+      const projectColumns = await db.select().from(columns).where(eq(columns.projectId, id));
+      const columnIds = projectColumns.map(c => c.id);
+      
+      // Delete contents in these columns
+      if (columnIds.length > 0) {
+        await db.delete(contents).where(contents.columnId.in(columnIds));
+      }
+      
+      // Delete columns
+      await db.delete(columns).where(eq(columns.projectId, id));
+      
+      // Delete project members
+      await db.delete(projectMembers).where(eq(projectMembers.projectId, id));
+      
+      // Finally delete the project
+      await db.delete(projects).where(eq(projects.id, id));
+      
+      return true;
+    } catch (error) {
+      console.error("Error deleting project:", error);
+      return false;
     }
-    
-    // Delete all columns and their contents
-    const columns = await this.getColumns(id);
-    for (const column of columns) {
-      await this.deleteColumn(column.id);
-    }
-    
-    return this.projects.delete(id);
   }
 
   // Project members operations
   async addProjectMember(insertProjectMember: InsertProjectMember): Promise<ProjectMember> {
-    const key = `${insertProjectMember.projectId}-${insertProjectMember.userId}`;
-    this.projectMembers.set(key, insertProjectMember);
-    return insertProjectMember;
+    const [projectMember] = await db
+      .insert(projectMembers)
+      .values(insertProjectMember)
+      .returning();
+    return projectMember;
   }
 
   async removeProjectMember(projectId: number, userId: number): Promise<boolean> {
-    const key = `${projectId}-${userId}`;
-    return this.projectMembers.delete(key);
+    try {
+      await db.delete(projectMembers).where(
+        and(
+          eq(projectMembers.projectId, projectId),
+          eq(projectMembers.userId, userId)
+        )
+      );
+      return true;
+    } catch (error) {
+      console.error("Error removing project member:", error);
+      return false;
+    }
   }
 
   async getProjectMembers(projectId: number): Promise<User[]> {
-    const memberEntries = Array.from(this.projectMembers.values()).filter(
-      (pm) => pm.projectId === projectId
-    );
+    const memberships = await db
+      .select()
+      .from(projectMembers)
+      .where(eq(projectMembers.projectId, projectId));
     
-    const members: User[] = [];
-    for (const entry of memberEntries) {
-      const user = await this.getUser(entry.userId);
-      if (user) members.push(user);
+    if (memberships.length === 0) {
+      return [];
     }
     
-    return members;
+    const userIds = memberships.map(m => m.userId);
+    return await db.select().from(users).where(users.id.in(userIds));
   }
 
   // Column operations
   async getColumns(projectId: number): Promise<Column[]> {
-    return Array.from(this.columns.values())
-      .filter((column) => column.projectId === projectId)
-      .sort((a, b) => a.order - b.order);
+    return await db
+      .select()
+      .from(columns)
+      .where(eq(columns.projectId, projectId))
+      .orderBy(columns.order);
   }
 
   async getColumnWithContents(columnId: number): Promise<ColumnWithContents | undefined> {
-    const column = this.columns.get(columnId);
+    const [column] = await db.select().from(columns).where(eq(columns.id, columnId));
     if (!column) return undefined;
+
+    const columnContents = await this.getContentByColumn(columnId);
     
-    const contents = await this.getContentByColumn(columnId);
-    const contentsWithAssignee: ContentWithAssignee[] = [];
+    // Get assignees and attachment counts for each content
+    const contentsWithAssignees: ContentWithAssignee[] = await Promise.all(
+      columnContents.map(async (content) => {
+        const contentWithAssignee = await this.getContentWithAssignee(content.id);
+        return contentWithAssignee || content;
+      })
+    );
     
-    for (const content of contents) {
-      const contentWithAssignee = { ...content } as ContentWithAssignee;
-      
-      if (content.assignedTo) {
-        const assignee = await this.getUser(content.assignedTo);
-        if (assignee) contentWithAssignee.assignee = assignee;
-      }
-      
-      const attachments = await this.getAttachments(content.id);
-      contentWithAssignee.attachmentCount = attachments.length;
-      
-      contentsWithAssignee.push(contentWithAssignee);
-    }
-    
-    return { ...column, contents: contentsWithAssignee };
+    return {
+      ...column,
+      contents: contentsWithAssignees
+    };
   }
 
   async createColumn(insertColumn: InsertColumn): Promise<Column> {
-    const id = this.currentColumnId++;
-    const column: Column = { ...insertColumn, id };
-    this.columns.set(id, column);
+    const [column] = await db
+      .insert(columns)
+      .values(insertColumn)
+      .returning();
     return column;
   }
 
   async updateColumn(id: number, updates: Partial<InsertColumn>): Promise<Column | undefined> {
-    const existingColumn = this.columns.get(id);
-    if (!existingColumn) return undefined;
-    
-    const updatedColumn = { ...existingColumn, ...updates };
-    this.columns.set(id, updatedColumn);
+    const [updatedColumn] = await db
+      .update(columns)
+      .set(updates)
+      .where(eq(columns.id, id))
+      .returning();
     return updatedColumn;
   }
 
   async deleteColumn(id: number): Promise<boolean> {
-    // Delete all contents in this column
-    const contents = await this.getContentByColumn(id);
-    for (const content of contents) {
-      await this.deleteContent(content.id);
+    try {
+      // First delete all contents in this column
+      await db.delete(contents).where(eq(contents.columnId, id));
+      
+      // Then delete the column
+      await db.delete(columns).where(eq(columns.id, id));
+      return true;
+    } catch (error) {
+      console.error("Error deleting column:", error);
+      return false;
     }
-    
-    return this.columns.delete(id);
   }
 
   // Content operations
   async getContent(id: number): Promise<Content | undefined> {
-    return this.contents.get(id);
+    const [content] = await db.select().from(contents).where(eq(contents.id, id));
+    return content;
   }
 
   async getContentByProject(projectId: number): Promise<Content[]> {
-    return Array.from(this.contents.values())
-      .filter((content) => content.projectId === projectId)
-      .sort((a, b) => a.order - b.order);
+    const projectColumns = await this.getColumns(projectId);
+    const columnIds = projectColumns.map(c => c.id);
+    
+    if (columnIds.length === 0) {
+      return [];
+    }
+    
+    return await db
+      .select()
+      .from(contents)
+      .where(contents.columnId.in(columnIds))
+      .orderBy(contents.order);
   }
 
   async getContentByColumn(columnId: number): Promise<Content[]> {
-    return Array.from(this.contents.values())
-      .filter((content) => content.columnId === columnId)
-      .sort((a, b) => a.order - b.order);
+    return await db
+      .select()
+      .from(contents)
+      .where(eq(contents.columnId, columnId))
+      .orderBy(contents.order);
   }
 
   async getContentWithAssignee(id: number): Promise<ContentWithAssignee | undefined> {
     const content = await this.getContent(id);
     if (!content) return undefined;
     
-    const contentWithAssignee: ContentWithAssignee = { ...content };
-    
+    let assignee: User | undefined;
     if (content.assignedTo) {
-      const assignee = await this.getUser(content.assignedTo);
-      if (assignee) contentWithAssignee.assignee = assignee;
+      assignee = await this.getUser(content.assignedTo);
     }
     
-    const attachments = await this.getAttachments(content.id);
-    contentWithAssignee.attachmentCount = attachments.length;
+    // Count attachments
+    const attachmentList = await this.getAttachments(id);
+    const attachmentCount = attachmentList.length;
     
-    return contentWithAssignee;
+    return {
+      ...content,
+      assignee,
+      attachmentCount
+    };
   }
 
   async createContent(insertContent: InsertContent): Promise<Content> {
-    const id = this.currentContentId++;
-    const now = new Date();
-    const content: Content = { ...insertContent, id, createdAt: now };
-    this.contents.set(id, content);
+    const [content] = await db
+      .insert(contents)
+      .values(insertContent)
+      .returning();
     return content;
   }
 
   async updateContent(id: number, updates: Partial<InsertContent>): Promise<Content | undefined> {
-    const existingContent = this.contents.get(id);
-    if (!existingContent) return undefined;
-    
-    const updatedContent = { ...existingContent, ...updates };
-    this.contents.set(id, updatedContent);
+    const [updatedContent] = await db
+      .update(contents)
+      .set(updates)
+      .where(eq(contents.id, id))
+      .returning();
     return updatedContent;
   }
 
   async moveContent(id: number, newColumnId: number, newOrder: number): Promise<Content | undefined> {
+    // Get the content to move
     const content = await this.getContent(id);
     if (!content) return undefined;
     
-    // Reorder contents in the old column
-    const oldColumnContents = await this.getContentByColumn(content.columnId);
-    for (const c of oldColumnContents) {
-      if (c.id !== id && c.order > content.order) {
-        await this.updateContent(c.id, { order: c.order - 1 });
-      }
-    }
-    
-    // Reorder contents in the new column
-    const newColumnContents = await this.getContentByColumn(newColumnId);
-    for (const c of newColumnContents) {
-      if (c.order >= newOrder) {
-        await this.updateContent(c.id, { order: c.order + 1 });
-      }
-    }
+    const oldColumnId = content.columnId;
     
     // Update the content's column and order
-    return this.updateContent(id, { columnId: newColumnId, order: newOrder });
+    const [movedContent] = await db
+      .update(contents)
+      .set({
+        columnId: newColumnId,
+        order: newOrder
+      })
+      .where(eq(contents.id, id))
+      .returning();
+    
+    // Reorder contents in old column
+    const oldColumnContents = await this.getContentByColumn(oldColumnId);
+    for (let i = 0; i < oldColumnContents.length; i++) {
+      await db
+        .update(contents)
+        .set({ order: i })
+        .where(eq(contents.id, oldColumnContents[i].id));
+    }
+    
+    // Reorder contents in new column
+    const newColumnContents = await this.getContentByColumn(newColumnId);
+    for (let i = 0; i < newColumnContents.length; i++) {
+      if (i !== newOrder) { // Skip the already updated content
+        await db
+          .update(contents)
+          .set({ order: i >= newOrder ? i + 1 : i })
+          .where(eq(contents.id, newColumnContents[i].id));
+      }
+    }
+    
+    return movedContent;
   }
 
   async deleteContent(id: number): Promise<boolean> {
-    // Delete all attachments for this content
-    const attachments = await this.getAttachments(id);
-    for (const attachment of attachments) {
-      await this.deleteAttachment(attachment.id);
+    try {
+      // First delete attachments
+      await db.delete(attachments).where(eq(attachments.contentId, id));
+      
+      // Then delete the content
+      await db.delete(contents).where(eq(contents.id, id));
+      return true;
+    } catch (error) {
+      console.error("Error deleting content:", error);
+      return false;
     }
-    
-    return this.contents.delete(id);
   }
 
   // Attachment operations
   async getAttachments(contentId: number): Promise<Attachment[]> {
-    return Array.from(this.attachments.values())
-      .filter((attachment) => attachment.contentId === contentId);
+    return await db
+      .select()
+      .from(attachments)
+      .where(eq(attachments.contentId, contentId));
   }
 
   async createAttachment(insertAttachment: InsertAttachment): Promise<Attachment> {
-    const id = this.currentAttachmentId++;
-    const now = new Date();
-    const attachment: Attachment = { ...insertAttachment, id, createdAt: now };
-    this.attachments.set(id, attachment);
+    const [attachment] = await db
+      .insert(attachments)
+      .values(insertAttachment)
+      .returning();
     return attachment;
   }
 
   async deleteAttachment(id: number): Promise<boolean> {
-    return this.attachments.delete(id);
+    try {
+      await db.delete(attachments).where(eq(attachments.id, id));
+      return true;
+    } catch (error) {
+      console.error("Error deleting attachment:", error);
+      return false;
+    }
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
