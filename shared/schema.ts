@@ -95,6 +95,30 @@ export const insertAttachmentSchema = createInsertSchema(attachments).omit({
   createdAt: true,
 });
 
+// YouTube video metadata table
+export const youtubeVideos = pgTable("youtube_videos", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  tags: text("tags").array(),
+  thumbnailUrl: text("thumbnail_url"),
+  videoUrl: text("video_url"),
+  visibility: text("visibility").default("private"),
+  category: text("category"),
+  playlist: text("playlist"),
+  scheduledPublishTime: timestamp("scheduled_publish_time"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").notNull().references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertYoutubeVideoSchema = createInsertSchema(youtubeVideos).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Export types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -113,6 +137,9 @@ export type InsertContent = z.infer<typeof insertContentSchema>;
 
 export type Attachment = typeof attachments.$inferSelect;
 export type InsertAttachment = z.infer<typeof insertAttachmentSchema>;
+
+export type YoutubeVideo = typeof youtubeVideos.$inferSelect;
+export type InsertYoutubeVideo = z.infer<typeof insertYoutubeVideoSchema>;
 
 // Custom types for the UI
 export type ProjectWithMembers = Project & {

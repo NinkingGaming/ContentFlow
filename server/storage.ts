@@ -4,7 +4,8 @@ import {
   projectMembers, type ProjectMember, type InsertProjectMember,
   columns, type Column, type InsertColumn,
   contents, type Content, type InsertContent,
-  attachments, type Attachment, type InsertAttachment
+  attachments, type Attachment, type InsertAttachment,
+  youtubeVideos, type YoutubeVideo, type InsertYoutubeVideo
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, sql } from "drizzle-orm";
@@ -52,6 +53,13 @@ export interface IStorage {
   getAttachments(contentId: number): Promise<Attachment[]>;
   createAttachment(attachment: InsertAttachment): Promise<Attachment>;
   deleteAttachment(id: number): Promise<boolean>;
+  
+  // YouTube video operations
+  getYoutubeVideo(id: number): Promise<YoutubeVideo | undefined>;
+  getYoutubeVideosByProject(projectId: number): Promise<YoutubeVideo[]>;
+  createYoutubeVideo(video: InsertYoutubeVideo): Promise<YoutubeVideo>;
+  updateYoutubeVideo(id: number, video: Partial<InsertYoutubeVideo>): Promise<YoutubeVideo | undefined>;
+  deleteYoutubeVideo(id: number): Promise<boolean>;
 }
 
 export type ProjectWithMembers = Project & {
@@ -447,6 +455,50 @@ export class DatabaseStorage implements IStorage {
       return true;
     } catch (error) {
       console.error("Error deleting attachment:", error);
+      return false;
+    }
+  }
+  
+  // YouTube video operations
+  async getYoutubeVideo(id: number): Promise<YoutubeVideo | undefined> {
+    const [video] = await db.select().from(youtubeVideos).where(eq(youtubeVideos.id, id));
+    return video;
+  }
+  
+  async getYoutubeVideosByProject(projectId: number): Promise<YoutubeVideo[]> {
+    return await db
+      .select()
+      .from(youtubeVideos)
+      .where(eq(youtubeVideos.projectId, projectId))
+      .orderBy(youtubeVideos.createdAt);
+  }
+  
+  async createYoutubeVideo(insertVideo: InsertYoutubeVideo): Promise<YoutubeVideo> {
+    const [video] = await db
+      .insert(youtubeVideos)
+      .values(insertVideo)
+      .returning();
+    return video;
+  }
+  
+  async updateYoutubeVideo(id: number, updates: Partial<InsertYoutubeVideo>): Promise<YoutubeVideo | undefined> {
+    const [updatedVideo] = await db
+      .update(youtubeVideos)
+      .set({
+        ...updates,
+        updatedAt: new Date() // Always update the updatedAt field
+      })
+      .where(eq(youtubeVideos.id, id))
+      .returning();
+    return updatedVideo;
+  }
+  
+  async deleteYoutubeVideo(id: number): Promise<boolean> {
+    try {
+      await db.delete(youtubeVideos).where(eq(youtubeVideos.id, id));
+      return true;
+    } catch (error) {
+      console.error("Error deleting YouTube video:", error);
       return false;
     }
   }

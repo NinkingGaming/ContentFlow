@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertProjectSchema, insertColumnSchema, insertContentSchema, insertAttachmentSchema } from "../shared/schema";
+import { insertUserSchema, insertProjectSchema, insertColumnSchema, insertContentSchema, insertAttachmentSchema, insertYoutubeVideoSchema } from "../shared/schema";
 import { z } from "zod";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -444,9 +444,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get current contents count to determine order
       const contents = await storage.getContentByColumn(contentData.columnId);
-      contentData.order = contents.length;
       
-      const content = await storage.createContent(contentData);
+      // Create content with additional order field
+      const content = await storage.createContent({
+        ...contentData,
+        order: contents.length  // Set the order directly in the database insert
+      });
+      
       console.log("Content created successfully:", content);
       res.status(201).json(content);
     } catch (error) {
@@ -569,6 +573,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const attachmentId = parseInt(req.params.id);
       await storage.deleteAttachment(attachmentId);
       res.json({ message: "Attachment deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+
+  // YouTube Video endpoints
+  app.get("/api/projects/:id/youtube-videos", isAuthenticated, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      
+      // Verify project exists
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      const videos = await storage.getYoutubeVideosByProject(projectId);
+      res.json(videos);
+    } catch (error) {
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.get("/api/youtube-videos/:id", isAuthenticated, async (req, res) => {
+    try {
+      const videoId = parseInt(req.params.id);
+      const video = await storage.getYoutubeVideo(videoId);
+      
+      if (!video) {
+        return res.status(404).json({ message: "YouTube video not found" });
+      }
+      
+      res.json(video);
+    } catch (error) {
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.post("/api/youtube-videos", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const videoData = insertYoutubeVideoSchema.parse({
+        ...req.body,
+        createdBy: user.id
+      });
+      
+      // Verify project exists
+      const project = await storage.getProject(videoData.projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      const video = await storage.createYoutubeVideo(videoData);
+      res.status(201).json(video);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: error.message });
+      }
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.put("/api/youtube-videos/:id", isAuthenticated, async (req, res) => {
+    try {
+      const videoId = parseInt(req.params.id);
+      const video = await storage.getYoutubeVideo(videoId);
+      
+      if (!video) {
+        return res.status(404).json({ message: "YouTube video not found" });
+      }
+      
+      const updateSchema = insertYoutubeVideoSchema.partial();
+      const updates = updateSchema.parse(req.body);
+      
+      const updatedVideo = await storage.updateYoutubeVideo(videoId, updates);
+      res.json(updatedVideo);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: error.message });
+      }
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.delete("/api/youtube-videos/:id", isAuthenticated, async (req, res) => {
+    try {
+      const videoId = parseInt(req.params.id);
+      const video = await storage.getYoutubeVideo(videoId);
+      
+      if (!video) {
+        return res.status(404).json({ message: "YouTube video not found" });
+      }
+      
+      const user = req.user as any;
+      const project = await storage.getProject(video.projectId);
+      if (project && project.createdBy !== user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      await storage.deleteYoutubeVideo(videoId);
+      res.json({ message: "YouTube video deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: "Server error" });
     }
