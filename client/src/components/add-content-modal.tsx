@@ -107,9 +107,14 @@ export function AddContentModal({
       
       handleClose();
     } catch (error) {
+      console.error("Error adding content:", error);
+      let errorMessage = "Failed to add content";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
       toast({
         title: "Error",
-        description: "Failed to add content",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

@@ -130,17 +130,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Project endpoints
   app.get("/api/projects", isAuthenticated, async (req, res) => {
     try {
+      console.log("Getting projects for user:", req.user);
       const user = req.user as any;
       const projects = await storage.getProjectsByUserId(user.id);
+      console.log(`Retrieved ${projects.length} projects for user ${user.id}`);
       
       // Fetch members for each project
       const projectsWithMembers = await Promise.all(projects.map(async (project) => {
-        const members = await storage.getProjectMembers(project.id);
-        return { ...project, members };
+        try {
+          const members = await storage.getProjectMembers(project.id);
+          return { ...project, members };
+        } catch (err) {
+          console.error(`Error getting members for project ${project.id}:`, err);
+          return { ...project, members: [] };
+        }
       }));
       
       res.json(projectsWithMembers);
     } catch (error) {
+      console.error("Error in /api/projects endpoint:", error);
       res.status(500).json({ message: "Server error" });
     }
   });
@@ -418,11 +426,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Content endpoints
   app.post("/api/contents", isAuthenticated, async (req, res) => {
     try {
+      console.log("Creating content with payload:", req.body);
       const user = req.user as any;
       const contentData = insertContentSchema.parse({
         ...req.body,
         createdBy: user.id
       });
+      
+      console.log("Validated content data:", contentData);
       
       // Verify column exists
       const columns = await storage.getColumns(contentData.projectId);
@@ -436,10 +447,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       contentData.order = contents.length;
       
       const content = await storage.createContent(contentData);
+      console.log("Content created successfully:", content);
       res.status(201).json(content);
     } catch (error) {
+      console.error("Error creating content:", error);
       if (error instanceof ZodError) {
-        return res.status(400).json({ message: error.message });
+        console.error("Validation error details:", error.errors);
+        return res.status(400).json({ message: JSON.stringify(error.errors, null, 2) });
       }
       return res.status(500).json({ message: "Server error" });
     }
