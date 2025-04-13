@@ -198,12 +198,40 @@ export function ScriptTab({ projectId }: { projectId: number }) {
     }
   };
   
-  // Find the next shot without correlation
+  // Find the next shot without correlation and create a new correlation for it
   const findUncorrelatedShot = () => {
     const uncorrelatedShot = spreadsheetData.find(row => !row.hasCorrelation);
     if (uncorrelatedShot) {
       const index = spreadsheetData.findIndex(row => row.id === uncorrelatedShot.id);
       setCurrentShotIndex(index);
+      
+      // Create a new empty correlation for this shot
+      const textId = `text-${Date.now()}`;
+      const newCorrelation: ScriptCorrelation = {
+        textId,
+        shotNumber: uncorrelatedShot.shotNumber,
+        text: "Enter your text for this shot here...",
+      };
+      
+      setCorrelations([...correlations, newCorrelation]);
+      
+      // Mark the shot as having correlation
+      const updatedData = spreadsheetData.map(row => 
+        row.shotNumber === uncorrelatedShot.shotNumber ? { ...row, hasCorrelation: true } : row
+      );
+      setSpreadsheetData(updatedData);
+      
+      // Apply highlighting in script content
+      if (scriptEditorRef.current) {
+        const updatedContent = scriptContent + `<p><span class="text-blue-500 cursor-pointer" data-text-id="${textId}" data-shot="${uncorrelatedShot.shotNumber}">Enter your text for this shot here...</span></p>`;
+        setScriptContent(updatedContent);
+        scriptEditorRef.current.innerHTML = updatedContent;
+      }
+      
+      saveData();
+      
+      // Switch to the micro tab
+      setActiveTab("micro");
     } else {
       toast({
         title: "No Uncorrelated Shots",
@@ -423,77 +451,70 @@ export function ScriptTab({ projectId }: { projectId: number }) {
           </div>
           
           {spreadsheetData.length > 0 && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="w-full">
               <Card>
-                <CardHeader>
-                  <CardTitle>Shot {spreadsheetData[currentShotIndex]?.shotNumber} Data</CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Shot {spreadsheetData[currentShotIndex]?.shotNumber} - Correlated Text</CardTitle>
+                    <CardDescription>
+                      {spreadsheetData[currentShotIndex]?.generalData 
+                        ? `Shot details: ${spreadsheetData[currentShotIndex]?.generalData}` 
+                        : 'Edit the text associated with this shot'}
+                    </CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => formatText('bold')}>
+                      <Bold className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => formatText('italic')}>
+                      <Italic className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => formatText('underline')}>
+                      <Underline className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    <div className="space-y-1">
-                      <Label htmlFor="generalData">General Data</Label>
-                      <Input 
-                        id="generalData"
-                        value={spreadsheetData[currentShotIndex]?.generalData || ''} 
-                        onChange={(e) => updateCell(spreadsheetData[currentShotIndex].id, 'generalData', e.target.value)}
-                      />
+                  {correlations.filter(corr => corr.shotNumber === spreadsheetData[currentShotIndex]?.shotNumber).length > 0 ? (
+                    <div
+                      ref={microEditorRef}
+                      contentEditable
+                      className="border rounded p-4 min-h-[300px] focus:outline-none focus:ring-2 focus:ring-primary"
+                      onInput={() => {
+                        if (microEditorRef.current) {
+                          // Update the correlation text
+                          const shotNumber = spreadsheetData[currentShotIndex]?.shotNumber;
+                          const shotCorrs = correlations.filter(corr => corr.shotNumber === shotNumber);
+                          if (shotCorrs.length > 0) {
+                            // For simplicity, we'll just update the first correlation
+                            // In a real implementation, this would be more sophisticated
+                            const updatedCorrelations = correlations.map(corr => {
+                              if (corr.shotNumber === shotNumber && corr.textId === shotCorrs[0].textId) {
+                                return { ...corr, text: microEditorRef.current?.innerHTML || corr.text };
+                              }
+                              return corr;
+                            });
+                            setCorrelations(updatedCorrelations);
+                            saveData();
+                          }
+                        }
+                      }}
+                      dangerouslySetInnerHTML={{ 
+                        __html: correlations
+                          .filter(corr => corr.shotNumber === spreadsheetData[currentShotIndex]?.shotNumber)
+                          .map(corr => corr.text)
+                          .join('<br/>') 
+                      }}
+                    />
+                  ) : (
+                    <div className="text-center py-10">
+                      <p className="text-muted-foreground mb-4">No correlated text for this shot</p>
+                      <Button onClick={findUncorrelatedShot}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Correlation
+                      </Button>
                     </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="shotData1">Shot Data 1</Label>
-                      <Input 
-                        id="shotData1"
-                        value={spreadsheetData[currentShotIndex]?.shotData1 || ''} 
-                        onChange={(e) => updateCell(spreadsheetData[currentShotIndex].id, 'shotData1', e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="shotData2">Shot Data 2</Label>
-                      <Input 
-                        id="shotData2"
-                        value={spreadsheetData[currentShotIndex]?.shotData2 || ''} 
-                        onChange={(e) => updateCell(spreadsheetData[currentShotIndex].id, 'shotData2', e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="shotData3">Shot Data 3</Label>
-                      <Input 
-                        id="shotData3"
-                        value={spreadsheetData[currentShotIndex]?.shotData3 || ''} 
-                        onChange={(e) => updateCell(spreadsheetData[currentShotIndex].id, 'shotData3', e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="shotData4">Shot Data 4</Label>
-                      <Input 
-                        id="shotData4"
-                        value={spreadsheetData[currentShotIndex]?.shotData4 || ''} 
-                        onChange={(e) => updateCell(spreadsheetData[currentShotIndex].id, 'shotData4', e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Correlated Text</CardTitle>
-                  <CardDescription>
-                    Text from the script correlated with this shot
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="border rounded p-3 min-h-[200px]">
-                    {correlations
-                      .filter(corr => corr.shotNumber === spreadsheetData[currentShotIndex]?.shotNumber)
-                      .map((corr, index) => (
-                        <div key={corr.textId} className="mb-2 pb-2 border-b last:border-0">
-                          <p>{corr.text}</p>
-                        </div>
-                      ))}
-                    {!spreadsheetData[currentShotIndex]?.hasCorrelation && (
-                      <p className="text-muted-foreground">No correlated text for this shot</p>
-                    )}
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
