@@ -77,6 +77,7 @@ export const contents = pgTable("contents", {
 export const insertContentSchema = createInsertSchema(contents).omit({
   id: true,
   createdAt: true,
+  order: true, // Order will be set by the server
 });
 
 // Attachments table
