@@ -26,7 +26,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarIcon, ArrowLeft, Upload, X } from "lucide-react";
+import { Calendar as CalendarIcon, ArrowLeft, Upload, X, FolderOpen } from "lucide-react";
+import { FilePicker } from "@/components/files-tab";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
@@ -61,6 +62,8 @@ export function YoutubeVideoForm({
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(
     videoToEdit?.thumbnailUrl || null
   );
+  const [isThumbnailPickerOpen, setIsThumbnailPickerOpen] = useState(false);
+  const [isVideoPickerOpen, setIsVideoPickerOpen] = useState(false);
 
   // Configure form with default values if editing
   const form = useForm<FormValues>({
@@ -151,16 +154,22 @@ export function YoutubeVideoForm({
 
   // Handle form submission
   const onSubmit = (values: FormValues) => {
-    // Convert comma-separated tags to array
-    const processedValues = {
-      ...values,
-      tags: values.tags ? values.tags.split(',').map(tag => tag.trim()) : []
-    };
+    // Extract tags and convert to array for API, but keep as string for form
+    const tagsArray = values.tags ? values.tags.split(',').map(tag => tag.trim()) : [];
     
     if (videoToEdit) {
-      updateMutation.mutate({ ...processedValues, id: videoToEdit.id });
+      updateMutation.mutate({ 
+        ...values, 
+        id: videoToEdit.id,
+        // Include tags array in request body
+        tags: tagsArray
+      });
     } else {
-      createMutation.mutate(processedValues);
+      createMutation.mutate({
+        ...values,
+        // Include tags array in request body
+        tags: tagsArray
+      });
     }
   };
 
@@ -286,13 +295,22 @@ export function YoutubeVideoForm({
                   <FormItem>
                     <FormLabel>Thumbnail URL</FormLabel>
                     <div className="flex items-center space-x-2">
-                      <FormControl>
+                      <FormControl className="flex-1">
                         <Input 
                           placeholder="URL to thumbnail image" 
                           value={field.value || ''}
                           onChange={(e) => handleThumbnailChange(e.target.value)}
                         />
                       </FormControl>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setIsThumbnailPickerOpen(true)}
+                      >
+                        <FolderOpen className="h-4 w-4 mr-1" />
+                        Browse
+                      </Button>
                       {thumbnailPreview && (
                         <Button 
                           type="button" 
@@ -325,12 +343,23 @@ export function YoutubeVideoForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Video URL</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="URL to video file" 
-                        {...field} 
-                      />
-                    </FormControl>
+                    <div className="flex items-center space-x-2">
+                      <FormControl className="flex-1">
+                        <Input 
+                          placeholder="URL to video file" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setIsVideoPickerOpen(true)}
+                      >
+                        <FolderOpen className="h-4 w-4 mr-1" />
+                        Browse
+                      </Button>
+                    </div>
                     <FormDescription>
                       Will be used to upload to YouTube.
                     </FormDescription>
@@ -426,6 +455,30 @@ export function YoutubeVideoForm({
           </div>
         </form>
       </Form>
+      
+      {/* Thumbnail File Picker */}
+      <FilePicker
+        projectId={projectId}
+        isOpen={isThumbnailPickerOpen}
+        onClose={() => setIsThumbnailPickerOpen(false)}
+        onSelect={(file) => {
+          handleThumbnailChange(file.filepath);
+          setIsThumbnailPickerOpen(false);
+        }}
+        acceptedFileTypes={['image/*']}
+      />
+      
+      {/* Video File Picker */}
+      <FilePicker
+        projectId={projectId}
+        isOpen={isVideoPickerOpen}
+        onClose={() => setIsVideoPickerOpen(false)}
+        onSelect={(file) => {
+          form.setValue('videoUrl', file.filepath);
+          setIsVideoPickerOpen(false);
+        }}
+        acceptedFileTypes={['video/*']}
+      />
     </div>
   );
 }
