@@ -1,7 +1,11 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertProjectSchema, insertColumnSchema, insertContentSchema, insertAttachmentSchema, insertYoutubeVideoSchema } from "../shared/schema";
+import { 
+  insertUserSchema, insertProjectSchema, insertColumnSchema, 
+  insertContentSchema, insertAttachmentSchema, insertYoutubeVideoSchema,
+  insertProjectFileSchema, insertProjectFolderSchema
+} from "../shared/schema";
 import { z } from "zod";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -674,6 +678,212 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await storage.deleteYoutubeVideo(videoId);
       res.json({ message: "YouTube video deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+
+  // Project Files endpoints
+  app.get("/api/projects/:id/files", isAuthenticated, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      
+      // Verify project exists
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      const files = await storage.getProjectFilesByProject(projectId);
+      res.json(files);
+    } catch (error) {
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.get("/api/files/:id", isAuthenticated, async (req, res) => {
+    try {
+      const fileId = parseInt(req.params.id);
+      const file = await storage.getProjectFile(fileId);
+      
+      if (!file) {
+        return res.status(404).json({ message: "File not found" });
+      }
+      
+      res.json(file);
+    } catch (error) {
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.get("/api/folders/:id/files", isAuthenticated, async (req, res) => {
+    try {
+      const folderId = parseInt(req.params.id);
+      const files = await storage.getProjectFilesByFolder(folderId);
+      res.json(files);
+    } catch (error) {
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.post("/api/files", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const fileData = insertProjectFileSchema.parse({
+        ...req.body,
+        createdBy: user.id
+      });
+      
+      const file = await storage.createProjectFile(fileData);
+      res.status(201).json(file);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: error.message });
+      }
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.put("/api/files/:id", isAuthenticated, async (req, res) => {
+    try {
+      const fileId = parseInt(req.params.id);
+      const file = await storage.getProjectFile(fileId);
+      
+      if (!file) {
+        return res.status(404).json({ message: "File not found" });
+      }
+      
+      const updateSchema = insertProjectFileSchema.partial();
+      const updates = updateSchema.parse(req.body);
+      
+      const updatedFile = await storage.updateProjectFile(fileId, updates);
+      res.json(updatedFile);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: error.message });
+      }
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.delete("/api/files/:id", isAuthenticated, async (req, res) => {
+    try {
+      const fileId = parseInt(req.params.id);
+      const file = await storage.getProjectFile(fileId);
+      
+      if (!file) {
+        return res.status(404).json({ message: "File not found" });
+      }
+      
+      await storage.deleteProjectFile(fileId);
+      res.json({ message: "File deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  // Project Folders endpoints
+  app.get("/api/projects/:id/folders", isAuthenticated, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      
+      // Verify project exists
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      const folders = await storage.getProjectFoldersByProject(projectId);
+      res.json(folders);
+    } catch (error) {
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.get("/api/folders/:id", isAuthenticated, async (req, res) => {
+    try {
+      const folderId = parseInt(req.params.id);
+      const folder = await storage.getProjectFolder(folderId);
+      
+      if (!folder) {
+        return res.status(404).json({ message: "Folder not found" });
+      }
+      
+      res.json(folder);
+    } catch (error) {
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.get("/api/projects/:projectId/folders/:folderId", isAuthenticated, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const folderId = req.params.folderId === 'root' ? null : parseInt(req.params.folderId);
+      
+      // Verify project exists
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      const folderWithContents = await storage.getProjectFolderWithContents(folderId, projectId);
+      res.json(folderWithContents);
+    } catch (error) {
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.post("/api/folders", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const folderData = insertProjectFolderSchema.parse({
+        ...req.body,
+        createdBy: user.id
+      });
+      
+      const folder = await storage.createProjectFolder(folderData);
+      res.status(201).json(folder);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: error.message });
+      }
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.put("/api/folders/:id", isAuthenticated, async (req, res) => {
+    try {
+      const folderId = parseInt(req.params.id);
+      const folder = await storage.getProjectFolder(folderId);
+      
+      if (!folder) {
+        return res.status(404).json({ message: "Folder not found" });
+      }
+      
+      const updateSchema = insertProjectFolderSchema.partial();
+      const updates = updateSchema.parse(req.body);
+      
+      const updatedFolder = await storage.updateProjectFolder(folderId, updates);
+      res.json(updatedFolder);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: error.message });
+      }
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.delete("/api/folders/:id", isAuthenticated, async (req, res) => {
+    try {
+      const folderId = parseInt(req.params.id);
+      const folder = await storage.getProjectFolder(folderId);
+      
+      if (!folder) {
+        return res.status(404).json({ message: "Folder not found" });
+      }
+      
+      await storage.deleteProjectFolder(folderId);
+      res.json({ message: "Folder deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: "Server error" });
     }

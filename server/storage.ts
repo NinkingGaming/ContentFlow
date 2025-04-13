@@ -5,7 +5,10 @@ import {
   columns, type Column, type InsertColumn,
   contents, type Content, type InsertContent,
   attachments, type Attachment, type InsertAttachment,
-  youtubeVideos, type YoutubeVideo, type InsertYoutubeVideo
+  youtubeVideos, type YoutubeVideo, type InsertYoutubeVideo,
+  projectFiles, type ProjectFile, type InsertProjectFile,
+  projectFolders, type ProjectFolder, type InsertProjectFolder,
+  type ProjectFolderWithParent, type ProjectFileWithFolder
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, sql } from "drizzle-orm";
