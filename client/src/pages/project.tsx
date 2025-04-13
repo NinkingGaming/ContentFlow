@@ -7,6 +7,7 @@ import { NewProjectModal } from "@/components/new-project-modal";
 import { AddContentModal } from "@/components/add-content-modal";
 import { YoutubeVideosTab } from "@/components/youtube-videos-tab";
 import { FilesTab } from "@/components/files-tab";
+import { WriteTab } from "@/components/write-tab";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { useAuth } from "@/lib/auth";
@@ -17,7 +18,7 @@ export default function ProjectPage({ id }: { id: string }) {
   const [newProjectModalOpen, setNewProjectModalOpen] = useState(false);
   const [addContentModalOpen, setAddContentModalOpen] = useState(false);
   const [selectedColumnId, setSelectedColumnId] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState("board");
+  const [activeTab, setActiveTab] = useState("write");
   
   const projectId = parseInt(id);
   
@@ -123,6 +124,12 @@ export default function ProjectPage({ id }: { id: string }) {
             
             <div className="flex space-x-1 mt-4 border-b border-neutral-200">
               <button 
+                className={`px-4 py-2 ${activeTab === "write" ? "text-primary border-b-2 border-primary font-medium" : "text-neutral-500 hover:text-neutral-800"}`}
+                onClick={() => setActiveTab("write")}
+              >
+                Write
+              </button>
+              <button 
                 className={`px-4 py-2 ${activeTab === "board" ? "text-primary border-b-2 border-primary font-medium" : "text-neutral-500 hover:text-neutral-800"}`}
                 onClick={() => setActiveTab("board")}
               >
@@ -196,6 +203,10 @@ export default function ProjectPage({ id }: { id: string }) {
             
             {activeTab === "files" && (
               <FilesTab projectId={projectId} />
+            )}
+            
+            {activeTab === "write" && (
+              <WriteTab projectId={projectId} />
             )}
           </div>
         </main>

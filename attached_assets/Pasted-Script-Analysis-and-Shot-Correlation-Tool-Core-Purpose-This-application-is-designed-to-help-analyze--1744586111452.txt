@@ -1,0 +1,64 @@
+Script Analysis and Shot Correlation Tool
+Core Purpose
+This application is designed to help analyze scripts and correlate text with shot data in a structured format. It provides three main working areas (tabs): Script, Micro, and Final, each serving distinct but interconnected purposes.
+Main Components
+1. Project Management
+Projects can be created, loaded, and deleted
+Each project contains:
+content.html (main script)
+script.json (correlation data)
+data.json (spreadsheet data)
+final.html (final formatted output)
+Projects are stored in a /projects directory with subdirectories for each project
+Project deletion has a custom confirmation dialog
+2. Spreadsheet Component
+Located at the top of the application
+Fixed number of columns (6) with specific purposes:
+Column 1: General data
+Column 2: Shot number (auto-generated)
+Column 3-6: Shot-specific data
+Features:
+Add/remove rows
+Cell editing with auto-save
+Fill handle for copying data down
+Correlation indicators (📝) showing which shots are linked to script text
+Click on correlation icon to jump to that shot in Micro tab
+3. Tab System
+A. Script Tab
+Rich text editor for the main script
+Toolbar with formatting options:
+Bold, Italic, Underline
+Text alignment (left, center, right)
+Bullet and numbered lists
+Link insertion
+Text correlation feature:
+Select text and press the correlation button
+Enter shot number to correlate
+Correlated text appears in blue
+Auto-saves to script.json
+B. Micro Tab
+Features:
+Shot selector dropdown
+Navigation buttons (previous/next shot)
+"Add Shot" button (finds first uncorrelated shot)
+"Send to Final" button
+Rich text editor toolbar
+Two-part display:
+Spreadsheet row data (editable)
+Correlated text editor
+Auto-saves both spreadsheet and correlation data
+Maintains formatting from main script
+C. Final Tab
+Displays formatted combination of shot data and correlated text
+Format for each shot:
+]
+Auto-saves to final.html
+Maintains rich text formatting
+Editable with same toolbar as other tabs
+4. Auto-Save System
+Debounced saving (2-second delay after last edit)
+Saves to different files based on content type:
+Spreadsheet → data.json
+Script correlations → script.json
+Final formatted text → final.html
+Shows feedback messages for save status
