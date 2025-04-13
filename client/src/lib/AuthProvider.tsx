@@ -13,10 +13,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const userData = await apiRequest<User | null>("/api/auth/me", {
-          on401: "returnNull"
+        const res = await fetch("/api/auth/me", {
+          credentials: "include",
         });
-        if (userData) {
+
+        if (res.ok) {
+          const userData = await res.json();
           setUser(userData);
         }
       } catch (error) {
@@ -32,11 +34,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (username: string, password: string) => {
     try {
       setIsLoading(true);
-      const userData = await apiRequest<User>("/api/auth/login", {
+      const res = await fetch("/api/auth/login", {
         method: "POST",
-        body: JSON.stringify({ username, password })
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
+        credentials: "include",
       });
-
+      
+      if (!res.ok) {
+        throw new Error("Invalid username or password");
+      }
+      
+      const userData = await res.json();
       setUser(userData);
       toast({
         title: "Welcome back!",
@@ -58,11 +69,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const register = async (userData: any) => {
     try {
       setIsLoading(true);
-      const newUser = await apiRequest<User>("/api/auth/register", {
+      const res = await fetch("/api/auth/register", {
         method: "POST",
-        body: JSON.stringify(userData)
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(userData),
+        credentials: "include",
       });
-
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ message: "Registration failed" }));
+        throw new Error(errorData.message || "Error creating account");
+      }
+      
+      const newUser = await res.json();
       setUser(newUser);
       toast({
         title: "Account created!",
@@ -84,9 +105,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     try {
       setIsLoading(true);
-      await apiRequest("/api/auth/logout", {
-        method: "POST"
+      const res = await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
       });
+      
+      if (!res.ok) {
+        throw new Error("Failed to log out");
+      }
+      
       setUser(null);
       
       toast({
