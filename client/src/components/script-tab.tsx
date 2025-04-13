@@ -75,7 +75,7 @@ export function ScriptTab({ projectId }: { projectId: number }) {
   const [shotForCorrelation, setShotForCorrelation] = useState<number | null>(null);
   
   const scriptEditorRef = useRef<HTMLDivElement>(null);
-  const microEditorRef = useRef<HTMLDivElement>(null);
+  const microEditorRef = useRef<HTMLTextAreaElement>(null);
   const finalEditorRef = useRef<HTMLDivElement>(null);
   
   // Mock save function (would use useMutation in real implementation)
@@ -213,7 +213,9 @@ export function ScriptTab({ projectId }: { projectId: number }) {
         text: "Enter your text for this shot here...",
       };
       
-      setCorrelations([...correlations, newCorrelation]);
+      // Update correlations state with the new correlation
+      const newCorrelations = [...correlations, newCorrelation];
+      setCorrelations(newCorrelations);
       
       // Mark the shot as having correlation
       const updatedData = spreadsheetData.map(row => 
@@ -228,6 +230,16 @@ export function ScriptTab({ projectId }: { projectId: number }) {
         scriptEditorRef.current.innerHTML = updatedContent;
       }
       
+      // Explicitly save the data with the new correlation
+      const scriptData: ScriptData = {
+        projectId,
+        content: scriptContent + `<p><span class="text-blue-500 cursor-pointer" data-text-id="${textId}" data-shot="${uncorrelatedShot.shotNumber}">Enter your text for this shot here...</span></p>`,
+        correlations: newCorrelations,
+        spreadsheetData: updatedData,
+        finalContent,
+      };
+      
+      // Save the updated script data
       saveData();
       
       // Switch to the micro tab
@@ -475,34 +487,35 @@ export function ScriptTab({ projectId }: { projectId: number }) {
               </CardHeader>
               <CardContent>
                 {correlations.filter(corr => corr.shotNumber === spreadsheetData[currentShotIndex]?.shotNumber).length > 0 ? (
-                  <div 
-                    className="border rounded p-4 min-h-[300px] focus:outline-none focus:ring-2 focus:ring-primary"
-                    ref={microEditorRef}
-                    contentEditable
-                    suppressContentEditableWarning={true}
-                    onInput={(e) => {
-                      const newContent = e.currentTarget.innerHTML;
-                      const shotNumber = spreadsheetData[currentShotIndex]?.shotNumber;
-                      const shotCorrs = correlations.filter(corr => corr.shotNumber === shotNumber);
-                      
-                      if (shotCorrs.length > 0) {
-                        const updatedCorrelations = correlations.map(corr => {
-                          if (corr.shotNumber === shotNumber && corr.textId === shotCorrs[0].textId) {
-                            return { ...corr, text: newContent };
-                          }
-                          return corr;
-                        });
+                  <div className="border rounded p-4 min-h-[300px] focus:outline-none focus:ring-2 focus:ring-primary">
+                    <textarea
+                      ref={microEditorRef}
+                      className="w-full h-full min-h-[300px] border-none focus:outline-none p-0 resize-none"
+                      value={correlations
+                        .filter(corr => corr.shotNumber === spreadsheetData[currentShotIndex]?.shotNumber)
+                        .map(corr => corr.text)
+                        .join('\n')}
+                      onChange={(e) => {
+                        const newContent = e.target.value;
+                        const shotNumber = spreadsheetData[currentShotIndex]?.shotNumber;
+                        const shotCorrs = correlations.filter(corr => corr.shotNumber === shotNumber);
                         
-                        setCorrelations(updatedCorrelations);
+                        if (shotCorrs.length > 0) {
+                          const updatedCorrelations = correlations.map(corr => {
+                            if (corr.shotNumber === shotNumber && corr.textId === shotCorrs[0].textId) {
+                              return { ...corr, text: newContent };
+                            }
+                            return corr;
+                          });
+                          
+                          setCorrelations(updatedCorrelations);
+                        }
+                      }}
+                      onBlur={() => {
+                        // Save the content when the user finishes editing
                         saveData();
-                      }
-                    }}
-                  >
-                    {correlations
-                      .filter(corr => corr.shotNumber === spreadsheetData[currentShotIndex]?.shotNumber)
-                      .map((corr, index) => (
-                        <div key={index} dangerouslySetInnerHTML={{ __html: corr.text }} />
-                      ))}
+                      }}
+                    />
                   </div>
                 ) : (
                   <div className="text-center py-10">
