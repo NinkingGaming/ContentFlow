@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/sidebar";
 import { ProjectColumn } from "@/components/project-column";
 import { NewProjectModal } from "@/components/new-project-modal";
 import { AddContentModal } from "@/components/add-content-modal";
+import { YoutubeVideosTab } from "@/components/youtube-videos-tab";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { useAuth } from "@/lib/auth";
@@ -15,6 +16,7 @@ export default function ProjectPage({ id }: { id: string }) {
   const [newProjectModalOpen, setNewProjectModalOpen] = useState(false);
   const [addContentModalOpen, setAddContentModalOpen] = useState(false);
   const [selectedColumnId, setSelectedColumnId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState("board");
   
   const projectId = parseInt(id);
   
@@ -119,33 +121,83 @@ export default function ProjectPage({ id }: { id: string }) {
             </div>
             
             <div className="flex space-x-1 mt-4 border-b border-neutral-200">
-              <button className="px-4 py-2 text-neutral-800 font-medium border-b-2 border-primary text-primary">Board</button>
-              <button className="px-4 py-2 text-neutral-500 hover:text-neutral-800">Timeline</button>
-              <button className="px-4 py-2 text-neutral-500 hover:text-neutral-800">Calendar</button>
-              <button className="px-4 py-2 text-neutral-500 hover:text-neutral-800">Files</button>
+              <button 
+                className={`px-4 py-2 ${activeTab === "board" ? "text-primary border-b-2 border-primary font-medium" : "text-neutral-500 hover:text-neutral-800"}`}
+                onClick={() => setActiveTab("board")}
+              >
+                Board
+              </button>
+              <button 
+                className={`px-4 py-2 ${activeTab === "timeline" ? "text-primary border-b-2 border-primary font-medium" : "text-neutral-500 hover:text-neutral-800"}`}
+                onClick={() => setActiveTab("timeline")}
+              >
+                Timeline
+              </button>
+              <button 
+                className={`px-4 py-2 ${activeTab === "calendar" ? "text-primary border-b-2 border-primary font-medium" : "text-neutral-500 hover:text-neutral-800"}`}
+                onClick={() => setActiveTab("calendar")}
+              >
+                Calendar
+              </button>
+              <button 
+                className={`px-4 py-2 ${activeTab === "files" ? "text-primary border-b-2 border-primary font-medium" : "text-neutral-500 hover:text-neutral-800"}`}
+                onClick={() => setActiveTab("files")}
+              >
+                Files
+              </button>
+              <button 
+                className={`px-4 py-2 ${activeTab === "youtube" ? "text-primary border-b-2 border-primary font-medium" : "text-neutral-500 hover:text-neutral-800"}`}
+                onClick={() => setActiveTab("youtube")}
+              >
+                YouTube
+              </button>
             </div>
           </div>
           
-          {/* Content Board */}
+          {/* Tab Content */}
           <div className="flex-1 overflow-auto p-4">
-            <DndProvider backend={HTML5Backend}>
-              <div className="flex flex-1 space-x-4 h-full">
-                {columns.map(column => (
-                  <ProjectColumn 
-                    key={column.id} 
-                    column={column} 
-                    onAddContent={() => handleAddContent(column.id)}
-                  />
-                ))}
-                
-                {/* Add Column Button */}
-                <div className="flex-shrink-0 w-10 flex items-start justify-center">
-                  <button className="mt-3 w-8 h-8 bg-neutral-200 hover:bg-neutral-300 rounded-full flex items-center justify-center text-neutral-600">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                  </button>
+            {activeTab === "board" && (
+              <DndProvider backend={HTML5Backend}>
+                <div className="flex flex-1 space-x-4 h-full">
+                  {columns.map(column => (
+                    <ProjectColumn 
+                      key={column.id} 
+                      column={column} 
+                      onAddContent={() => handleAddContent(column.id)}
+                    />
+                  ))}
+                  
+                  {/* Add Column Button */}
+                  <div className="flex-shrink-0 w-10 flex items-start justify-center">
+                    <button className="mt-3 w-8 h-8 bg-neutral-200 hover:bg-neutral-300 rounded-full flex items-center justify-center text-neutral-600">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                  </div>
                 </div>
+              </DndProvider>
+            )}
+            
+            {activeTab === "youtube" && (
+              <YoutubeVideosTab projectId={projectId} />
+            )}
+            
+            {activeTab === "timeline" && (
+              <div className="flex items-center justify-center h-64">
+                <p className="text-neutral-500">Timeline view coming soon</p>
               </div>
-            </DndProvider>
+            )}
+            
+            {activeTab === "calendar" && (
+              <div className="flex items-center justify-center h-64">
+                <p className="text-neutral-500">Calendar view coming soon</p>
+              </div>
+            )}
+            
+            {activeTab === "files" && (
+              <div className="flex items-center justify-center h-64">
+                <p className="text-neutral-500">Files view coming soon</p>
+              </div>
+            )}
           </div>
         </main>
       </div>
