@@ -95,6 +95,43 @@ export const insertAttachmentSchema = createInsertSchema(attachments).omit({
   createdAt: true,
 });
 
+// Project files table
+export const projectFiles = pgTable("project_files", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id),
+  filename: text("filename").notNull(),
+  originalFilename: text("original_filename").notNull(),
+  filepath: text("filepath").notNull(),
+  mimetype: text("mimetype").notNull(),
+  size: integer("size").notNull(),
+  isPublic: boolean("is_public").default(false),
+  folderId: integer("folder_id"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").notNull().references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertProjectFileSchema = createInsertSchema(projectFiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Project folders table
+export const projectFolders = pgTable("project_folders", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id),
+  name: text("name").notNull(),
+  parentId: integer("parent_id"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").notNull().references(() => users.id),
+});
+
+export const insertProjectFolderSchema = createInsertSchema(projectFolders).omit({
+  id: true,
+  createdAt: true,
+});
+
 // YouTube video metadata table
 export const youtubeVideos = pgTable("youtube_videos", {
   id: serial("id").primaryKey(),
@@ -141,6 +178,12 @@ export type InsertAttachment = z.infer<typeof insertAttachmentSchema>;
 export type YoutubeVideo = typeof youtubeVideos.$inferSelect;
 export type InsertYoutubeVideo = z.infer<typeof insertYoutubeVideoSchema>;
 
+export type ProjectFile = typeof projectFiles.$inferSelect;
+export type InsertProjectFile = z.infer<typeof insertProjectFileSchema>;
+
+export type ProjectFolder = typeof projectFolders.$inferSelect;
+export type InsertProjectFolder = z.infer<typeof insertProjectFolderSchema>;
+
 // Custom types for the UI
 export type ProjectWithMembers = Project & {
   members: User[];
@@ -153,4 +196,14 @@ export type ColumnWithContents = Column & {
 export type ContentWithAssignee = Content & {
   assignee?: User;
   attachmentCount?: number;
+};
+
+export type ProjectFileWithFolder = ProjectFile & {
+  folder?: ProjectFolder;
+};
+
+export type ProjectFolderWithParent = ProjectFolder & {
+  parent?: ProjectFolder;
+  files?: ProjectFile[];
+  subfolders?: ProjectFolder[];
 };

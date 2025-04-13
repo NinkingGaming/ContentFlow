@@ -60,6 +60,23 @@ export interface IStorage {
   createYoutubeVideo(video: InsertYoutubeVideo): Promise<YoutubeVideo>;
   updateYoutubeVideo(id: number, video: Partial<InsertYoutubeVideo>): Promise<YoutubeVideo | undefined>;
   deleteYoutubeVideo(id: number): Promise<boolean>;
+  
+  // Project file operations
+  getProjectFile(id: number): Promise<ProjectFile | undefined>;
+  getProjectFilesByProject(projectId: number): Promise<ProjectFile[]>;
+  getProjectFilesByFolder(folderId: number | null): Promise<ProjectFile[]>;
+  createProjectFile(file: InsertProjectFile): Promise<ProjectFile>;
+  updateProjectFile(id: number, file: Partial<InsertProjectFile>): Promise<ProjectFile | undefined>;
+  deleteProjectFile(id: number): Promise<boolean>;
+  
+  // Project folder operations
+  getProjectFolder(id: number): Promise<ProjectFolder | undefined>;
+  getProjectFolderWithContents(id: number | null, projectId: number): Promise<ProjectFolderWithParent | undefined>;
+  getProjectFoldersByProject(projectId: number): Promise<ProjectFolder[]>;
+  getProjectSubfolders(parentId: number | null, projectId: number): Promise<ProjectFolder[]>;
+  createProjectFolder(folder: InsertProjectFolder): Promise<ProjectFolder>;
+  updateProjectFolder(id: number, folder: Partial<InsertProjectFolder>): Promise<ProjectFolder | undefined>;
+  deleteProjectFolder(id: number): Promise<boolean>;
 }
 
 export type ProjectWithMembers = Project & {
@@ -499,6 +516,179 @@ export class DatabaseStorage implements IStorage {
       return true;
     } catch (error) {
       console.error("Error deleting YouTube video:", error);
+      return false;
+    }
+  }
+
+  // Project file operations
+  async getProjectFile(id: number): Promise<ProjectFile | undefined> {
+    const [file] = await db.select().from(projectFiles).where(eq(projectFiles.id, id));
+    return file;
+  }
+
+  async getProjectFilesByProject(projectId: number): Promise<ProjectFile[]> {
+    return await db
+      .select()
+      .from(projectFiles)
+      .where(eq(projectFiles.projectId, projectId));
+  }
+
+  async getProjectFilesByFolder(folderId: number | null): Promise<ProjectFile[]> {
+    if (folderId === null) {
+      // Root folder (null parentId)
+      return await db
+        .select()
+        .from(projectFiles)
+        .where(sql`${projectFiles.folderId} IS NULL`);
+    } else {
+      return await db
+        .select()
+        .from(projectFiles)
+        .where(eq(projectFiles.folderId, folderId));
+    }
+  }
+
+  async createProjectFile(insertFile: InsertProjectFile): Promise<ProjectFile> {
+    const [file] = await db
+      .insert(projectFiles)
+      .values(insertFile)
+      .returning();
+    return file;
+  }
+
+  async updateProjectFile(id: number, updates: Partial<InsertProjectFile>): Promise<ProjectFile | undefined> {
+    const [updatedFile] = await db
+      .update(projectFiles)
+      .set(updates)
+      .where(eq(projectFiles.id, id))
+      .returning();
+    return updatedFile;
+  }
+
+  async deleteProjectFile(id: number): Promise<boolean> {
+    try {
+      await db.delete(projectFiles).where(eq(projectFiles.id, id));
+      return true;
+    } catch (error) {
+      console.error("Error deleting project file:", error);
+      return false;
+    }
+  }
+
+  // Project folder operations
+  async getProjectFolder(id: number): Promise<ProjectFolder | undefined> {
+    const [folder] = await db.select().from(projectFolders).where(eq(projectFolders.id, id));
+    return folder;
+  }
+
+  async getProjectFolderWithContents(id: number | null, projectId: number): Promise<ProjectFolderWithParent | undefined> {
+    try {
+      let folder: ProjectFolder | undefined;
+      let parent: ProjectFolder | undefined;
+      
+      if (id === null) {
+        // Root folder case (virtual folder)
+        folder = {
+          id: 0,
+          projectId,
+          name: "Root",
+          parentId: null,
+          createdAt: new Date(),
+          createdBy: 0
+        };
+      } else {
+        // Real folder from database
+        const [dbFolder] = await db.select().from(projectFolders).where(eq(projectFolders.id, id));
+        if (!dbFolder) return undefined;
+        folder = dbFolder;
+        
+        // Get parent folder if exists
+        if (folder.parentId) {
+          const [parentFolder] = await db.select().from(projectFolders).where(eq(projectFolders.id, folder.parentId));
+          parent = parentFolder;
+        }
+      }
+      
+      // Get files in this folder
+      const files = await this.getProjectFilesByFolder(id);
+      
+      // Get subfolders
+      const subfolders = await this.getProjectSubfolders(id, projectId);
+      
+      return {
+        ...folder,
+        parent,
+        files,
+        subfolders
+      };
+    } catch (error) {
+      console.error(`Error in getProjectFolderWithContents for id ${id}:`, error);
+      return undefined;
+    }
+  }
+
+  async getProjectFoldersByProject(projectId: number): Promise<ProjectFolder[]> {
+    return await db
+      .select()
+      .from(projectFolders)
+      .where(eq(projectFolders.projectId, projectId));
+  }
+
+  async getProjectSubfolders(parentId: number | null, projectId: number): Promise<ProjectFolder[]> {
+    if (parentId === null) {
+      // Root folders (null parentId)
+      return await db
+        .select()
+        .from(projectFolders)
+        .where(
+          and(
+            eq(projectFolders.projectId, projectId),
+            sql`${projectFolders.parentId} IS NULL`
+          )
+        );
+    } else {
+      return await db
+        .select()
+        .from(projectFolders)
+        .where(
+          and(
+            eq(projectFolders.projectId, projectId),
+            eq(projectFolders.parentId, parentId)
+          )
+        );
+    }
+  }
+
+  async createProjectFolder(insertFolder: InsertProjectFolder): Promise<ProjectFolder> {
+    const [folder] = await db
+      .insert(projectFolders)
+      .values(insertFolder)
+      .returning();
+    return folder;
+  }
+
+  async updateProjectFolder(id: number, updates: Partial<InsertProjectFolder>): Promise<ProjectFolder | undefined> {
+    const [updatedFolder] = await db
+      .update(projectFolders)
+      .set(updates)
+      .where(eq(projectFolders.id, id))
+      .returning();
+    return updatedFolder;
+  }
+
+  async deleteProjectFolder(id: number): Promise<boolean> {
+    try {
+      // First move all files in this folder to root (null folder)
+      await db
+        .update(projectFiles)
+        .set({ folderId: null })
+        .where(eq(projectFiles.folderId, id));
+      
+      // Delete the folder
+      await db.delete(projectFolders).where(eq(projectFolders.id, id));
+      return true;
+    } catch (error) {
+      console.error("Error deleting project folder:", error);
       return false;
     }
   }
