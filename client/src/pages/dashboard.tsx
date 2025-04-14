@@ -62,13 +62,13 @@ export default function Dashboard() {
                 className="mt-4 md:mt-0 bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-md flex items-center justify-center transition"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                <span>New Channel</span>
+                <span>New Project</span>
               </button>
             </div>
             
             <Tabs defaultValue="projects" className="mb-6">
               <TabsList className="mb-4">
-                <TabsTrigger value="projects">Channels</TabsTrigger>
+                <TabsTrigger value="projects">Projects</TabsTrigger>
                 {/* Only show Team tab for admins and producers */}
                 {user?.role === UserRole.ADMIN || user?.role === UserRole.PRODUCER ? (
                   <TabsTrigger value="team">Team</TabsTrigger>
@@ -136,14 +136,14 @@ export default function Dashboard() {
                       <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mb-4 text-neutral-400">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.48-8.48l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
                       </div>
-                      <h3 className="text-lg font-medium text-neutral-800 mb-2">No channels yet</h3>
-                      <p className="text-neutral-500 max-w-md mb-6">Create your first channel to start organizing your content for goblinTV or Compactful.</p>
+                      <h3 className="text-lg font-medium text-neutral-800 mb-2">No projects yet</h3>
+                      <p className="text-neutral-500 max-w-md mb-6">Create your first project to start organizing your content for goblinTV or Compactful.</p>
                       <button 
                         onClick={openNewProjectModal}
                         className="bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-md flex items-center justify-center transition"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                        <span>Create Your First Channel</span>
+                        <span>Create Your First Project</span>
                       </button>
                     </div>
                   )}
