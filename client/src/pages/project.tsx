@@ -18,7 +18,7 @@ export default function ProjectPage({ id }: { id: string }) {
   const [newProjectModalOpen, setNewProjectModalOpen] = useState(false);
   const [addContentModalOpen, setAddContentModalOpen] = useState(false);
   const [selectedColumnId, setSelectedColumnId] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState("write");
+  const [activeTab, setActiveTab] = useState("board");
   
   const projectId = parseInt(id);
   
@@ -124,16 +124,16 @@ export default function ProjectPage({ id }: { id: string }) {
             
             <div className="flex space-x-1 mt-4 border-b border-neutral-200">
               <button 
-                className={`px-4 py-2 ${activeTab === "write" ? "text-primary border-b-2 border-primary font-medium" : "text-neutral-500 hover:text-neutral-800"}`}
-                onClick={() => setActiveTab("write")}
-              >
-                Write
-              </button>
-              <button 
                 className={`px-4 py-2 ${activeTab === "board" ? "text-primary border-b-2 border-primary font-medium" : "text-neutral-500 hover:text-neutral-800"}`}
                 onClick={() => setActiveTab("board")}
               >
                 Board
+              </button>
+              <button 
+                className={`px-4 py-2 ${activeTab === "write" ? "text-primary border-b-2 border-primary font-medium" : "text-neutral-500 hover:text-neutral-800"}`}
+                onClick={() => setActiveTab("write")}
+              >
+                Write
               </button>
               <button 
                 className={`px-4 py-2 ${activeTab === "timeline" ? "text-primary border-b-2 border-primary font-medium" : "text-neutral-500 hover:text-neutral-800"}`}
