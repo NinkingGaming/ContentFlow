@@ -547,11 +547,43 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createColumn(insertColumn: InsertColumn): Promise<Column> {
-    const [column] = await db
-      .insert(columns)
-      .values(insertColumn)
-      .returning();
-    return column;
+    try {
+      console.log("Storage: Creating column with data:", JSON.stringify(insertColumn));
+      
+      // Use direct SQL query instead of ORM to ensure we have explicit control
+      const client = await pool.connect();
+      try {
+        // Start transaction
+        await client.query('BEGIN');
+        
+        console.log(`Creating column with direct SQL: projectId=${insertColumn.projectId}, name=${insertColumn.name}, color=${insertColumn.color}, order=${insertColumn.order}`);
+        
+        // Insert using parameterized query
+        const result = await client.query(
+          `INSERT INTO columns (project_id, name, color, "order") 
+           VALUES ($1, $2, $3, $4) 
+           RETURNING id, project_id AS "projectId", name, color, "order"`,
+          [insertColumn.projectId, insertColumn.name, insertColumn.color, insertColumn.order]
+        );
+        
+        // Commit transaction
+        await client.query('COMMIT');
+        
+        const column = result.rows[0];
+        console.log("Storage: Column created successfully:", JSON.stringify(column));
+        return column;
+      } catch (error) {
+        // Rollback in case of error
+        await client.query('ROLLBACK');
+        console.error("Storage: Error creating column with SQL:", error);
+        throw error;
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      console.error("Storage: Error creating column:", error);
+      throw error;
+    }
   }
 
   async updateColumn(id: number, updates: Partial<InsertColumn>): Promise<Column | undefined> {

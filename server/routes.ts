@@ -324,34 +324,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create default columns
       try {
-        // Create them using the storage interface
-        await storage.createColumn({
+        console.log("Creating default columns for project:", project.id);
+        console.log("Creating Ideation column with color #EAB308");
+        
+        // Debug column creation
+        const column1 = {
           projectId: project.id,
           name: "Ideation",
           color: "#EAB308",
           order: 0
-        });
+        };
+        console.log("Column data to be created:", JSON.stringify(column1));
+        const ideationColumn = await storage.createColumn(column1);
+        console.log("Ideation column created:", JSON.stringify(ideationColumn));
         
-        await storage.createColumn({
+        console.log("Creating Pre-Production column with color #3B82F6");
+        const column2 = {
           projectId: project.id,
           name: "Pre-Production",
           color: "#3B82F6",
           order: 1
-        });
+        };
+        console.log("Column data to be created:", JSON.stringify(column2));
+        const preProductionColumn = await storage.createColumn(column2);
+        console.log("Pre-Production column created:", JSON.stringify(preProductionColumn));
         
-        await storage.createColumn({
+        console.log("Creating Production column with color #8B5CF6");
+        const column3 = {
           projectId: project.id,
           name: "Production", 
           color: "#8B5CF6",
           order: 2
-        });
+        };
+        console.log("Column data to be created:", JSON.stringify(column3));
+        const productionColumn = await storage.createColumn(column3);
+        console.log("Production column created:", JSON.stringify(productionColumn));
         
-        await storage.createColumn({
+        console.log("Creating Post-Production column with color #10B981");
+        const column4 = {
           projectId: project.id,
           name: "Post-Production",
           color: "#10B981",
           order: 3
-        });
+        };
+        console.log("Column data to be created:", JSON.stringify(column4));
+        const postProductionColumn = await storage.createColumn(column4);
+        console.log("Post-Production column created:", JSON.stringify(postProductionColumn));
+        
+        console.log("All default columns created successfully");
       } catch (columnError) {
         console.error("Error creating columns:", columnError);
         throw columnError;
