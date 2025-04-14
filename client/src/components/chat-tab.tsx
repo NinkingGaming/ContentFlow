@@ -169,11 +169,13 @@ export function ChatTab() {
         ) : (
           <div className="flex-1 overflow-auto">
             <div className="p-2">
-              <Input 
-                placeholder="Search channels" 
-                className="h-8 text-sm"
-                prefixIcon={<Search className="h-3.5 w-3.5 text-muted-foreground" />}
-              />
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input 
+                  placeholder="Search channels" 
+                  className="h-8 text-sm pl-8"
+                />
+              </div>
             </div>
             
             {/* Channel Groups */}
@@ -543,7 +545,11 @@ function ChatMessageItem({ message, isOwnMessage }: ChatMessageItemProps) {
 // Channel Dialog Component
 function ChatChannelDialog() {
   const { createChannel, setCurrentChannel } = useChat();
-  const [channelData, setChannelData] = useState({
+  const [channelData, setChannelData] = useState<{
+    name: string;
+    description: string;
+    isPrivate: boolean;
+  }>({
     name: '',
     description: '',
     isPrivate: false
@@ -557,7 +563,7 @@ function ChatChannelDialog() {
       setIsLoading(true);
       const newChannel = await createChannel({
         name: channelData.name.trim(),
-        description: channelData.description.trim() || null,
+        description: channelData.description.trim() || undefined,
         isPrivate: channelData.isPrivate
       });
       
