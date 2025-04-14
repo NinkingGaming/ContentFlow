@@ -1,11 +1,13 @@
-import { useState } from "react";
-import { ScriptTab } from "@/components/script-tab";
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { FileText, PenTool, Lightbulb, FileEdit } from "lucide-react";
+import { FileText, PenTool, Lightbulb, FileEdit, Table } from "lucide-react";
+import { useScriptData } from "@/hooks/use-script-data";
+import { AuthProvider } from "@/lib/auth";
+import { ScriptTab } from "@/components/script-tab";
 
 export function WriteTab({ projectId }: { projectId: number }) {
-  const [activeWriteTab, setActiveWriteTab] = useState("script");
+  const [activeWriteTab, setActiveWriteTab] = useState("sheet");
 
   return (
     <div className="space-y-4">
@@ -14,17 +16,17 @@ export function WriteTab({ projectId }: { projectId: number }) {
         
         <Tabs value={activeWriteTab} onValueChange={setActiveWriteTab} className="w-full">
           <TabsList className="grid grid-cols-4">
-            <TabsTrigger value="script" className="flex items-center">
-              <FileText className="h-4 w-4 mr-2" />
-              Script
+            <TabsTrigger value="sheet" className="flex items-center">
+              <Table className="h-4 w-4 mr-2" />
+              Sheet
             </TabsTrigger>
-            <TabsTrigger value="ideas" className="flex items-center">
+            <TabsTrigger value="micro" className="flex items-center">
               <Lightbulb className="h-4 w-4 mr-2" />
-              Ideas
+              Micro
             </TabsTrigger>
-            <TabsTrigger value="drafts" className="flex items-center">
+            <TabsTrigger value="script" className="flex items-center">
               <PenTool className="h-4 w-4 mr-2" />
-              Drafts
+              Script
             </TabsTrigger>
             <TabsTrigger value="documents" className="flex items-center">
               <FileEdit className="h-4 w-4 mr-2" />
@@ -32,55 +34,42 @@ export function WriteTab({ projectId }: { projectId: number }) {
             </TabsTrigger>
           </TabsList>
           
+          <TabsContent value="sheet" className="mt-4">
+            <Card>
+              <CardContent className="pt-6">
+                <AuthProvider>
+                  <ScriptTab projectId={projectId} initialTab="sheet" />
+                </AuthProvider>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="micro" className="mt-4">
+            <Card>
+              <CardContent className="pt-6">
+                <AuthProvider>
+                  <ScriptTab projectId={projectId} initialTab="micro" />
+                </AuthProvider>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
           <TabsContent value="script" className="mt-4">
             <Card>
               <CardContent className="pt-6">
-                <ScriptTab projectId={projectId} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="ideas" className="mt-4">
-            <Card>
-              <CardContent className="pt-6 min-h-[600px] flex items-center justify-center">
-                <div className="text-center">
-                  <Lightbulb className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-xl font-medium mb-2">Idea Management</h3>
-                  <p className="text-muted-foreground max-w-md">
-                    This is where you'll be able to brainstorm and organize ideas for your content.
-                    Feature coming soon!
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="drafts" className="mt-4">
-            <Card>
-              <CardContent className="pt-6 min-h-[600px] flex items-center justify-center">
-                <div className="text-center">
-                  <PenTool className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-xl font-medium mb-2">Draft Management</h3>
-                  <p className="text-muted-foreground max-w-md">
-                    Track multiple drafts of your scripts and written content here.
-                    Feature coming soon!
-                  </p>
-                </div>
+                <AuthProvider>
+                  <ScriptTab projectId={projectId} initialTab="script" />
+                </AuthProvider>
               </CardContent>
             </Card>
           </TabsContent>
           
           <TabsContent value="documents" className="mt-4">
             <Card>
-              <CardContent className="pt-6 min-h-[600px] flex items-center justify-center">
-                <div className="text-center">
-                  <FileEdit className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-xl font-medium mb-2">Document Management</h3>
-                  <p className="text-muted-foreground max-w-md">
-                    Organize and manage all your project-related documents in one place.
-                    Feature coming soon!
-                  </p>
-                </div>
+              <CardContent className="pt-6">
+                <AuthProvider>
+                  <ScriptTab projectId={projectId} initialTab="documents" />
+                </AuthProvider>
               </CardContent>
             </Card>
           </TabsContent>

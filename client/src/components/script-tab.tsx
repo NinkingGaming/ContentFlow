@@ -41,11 +41,11 @@ import {
   Eye
 } from "lucide-react";
 
-export function ScriptTab({ projectId }: { projectId: number }) {
+export function ScriptTab({ projectId, initialTab = "sheet" }: { projectId: number, initialTab?: string }) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState("sheet");
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [scriptContent, setScriptContent] = useState("<p>Enter your script here...</p>");
   const [finalContent, setFinalContent] = useState("<p>Final formatted content will appear here...</p>");
   const [publishedFinals, setPublishedFinals] = useState<PublishedFinal[]>([]);
