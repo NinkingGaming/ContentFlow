@@ -1376,6 +1376,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== Schedule Events API ==========
+  
+  // Get all schedule events for a project
+  app.get("/api/projects/:id/schedule", isAuthenticated, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const events = await storage.getScheduleEventsByProject(projectId);
+      res.json(events);
+    } catch (error) {
+      console.error("Error getting schedule events:", error);
+      res.status(500).json({ message: "Failed to get schedule events" });
+    }
+  });
+  
+  // Get schedule events for a specific month with 2-week padding
+  app.get("/api/projects/:id/schedule/month/:year/:month", isAuthenticated, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const year = parseInt(req.params.year);
+      const month = parseInt(req.params.month);
+      
+      const events = await storage.getScheduleEventsByMonth(projectId, year, month);
+      res.json(events);
+    } catch (error) {
+      console.error("Error getting schedule events for month:", error);
+      res.status(500).json({ message: "Failed to get schedule events for month" });
+    }
+  });
+  
+  // Create a new schedule event
+  app.post("/api/projects/:id/schedule", isAuthenticated, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const user = req.user as any;
+      
+      const eventData = {
+        ...req.body,
+        projectId,
+        createdBy: user.id,
+      };
+      
+      const newEvent = await storage.createScheduleEvent(eventData);
+      res.status(201).json(newEvent);
+    } catch (error) {
+      console.error("Error creating schedule event:", error);
+      res.status(500).json({ message: "Failed to create schedule event" });
+    }
+  });
+  
+  // Update a schedule event
+  app.put("/api/projects/:id/schedule/:eventId", isAuthenticated, async (req, res) => {
+    try {
+      const eventId = parseInt(req.params.eventId);
+      
+      const updatedEvent = await storage.updateScheduleEvent(eventId, req.body);
+      if (!updatedEvent) {
+        return res.status(404).json({ message: "Schedule event not found" });
+      }
+      
+      res.json(updatedEvent);
+    } catch (error) {
+      console.error("Error updating schedule event:", error);
+      res.status(500).json({ message: "Failed to update schedule event" });
+    }
+  });
+  
+  // Delete a schedule event
+  app.delete("/api/projects/:id/schedule/:eventId", isAuthenticated, async (req, res) => {
+    try {
+      const eventId = parseInt(req.params.eventId);
+      
+      const success = await storage.deleteScheduleEvent(eventId);
+      if (!success) {
+        return res.status(404).json({ message: "Schedule event not found" });
+      }
+      
+      res.status(204).end();
+    } catch (error) {
+      console.error("Error deleting schedule event:", error);
+      res.status(500).json({ message: "Failed to delete schedule event" });
+    }
+  });
+
   // ========== Chat Channel API ==========
   
   // Get all chat channels for current user
