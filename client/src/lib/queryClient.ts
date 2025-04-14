@@ -10,13 +10,17 @@ async function throwIfResNotOk(res: Response) {
 export type UnauthorizedBehavior = "returnNull" | "throw";
 
 export async function apiRequest<T = any>(
+  method: string,
   url: string,
+  data?: any,
   options?: RequestInit & { on401?: UnauthorizedBehavior }
-): Promise<T> {
+): Promise<Response> {
   const { on401, ...config } = options || {};
   
   const res = await fetch(url, {
+    method,
     ...config,
+    body: data ? JSON.stringify(data) : undefined,
     headers: {
       'Content-Type': 'application/json',
       ...(config.headers || {})
@@ -25,11 +29,11 @@ export async function apiRequest<T = any>(
   });
 
   if (on401 === "returnNull" && res.status === 401) {
-    return null as T;
+    return res;
   }
 
   await throwIfResNotOk(res);
-  return res.json();
+  return res;
 }
 
 export const getQueryFn: <T>(options: {

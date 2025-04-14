@@ -12,7 +12,7 @@ import { WriteTab } from "@/components/write-tab";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { useAuth } from "@/lib/auth";
-import { ColumnWithContents, Project, User } from "@shared/schema";
+import { ColumnWithContents, Project, ProjectWithMembers, User } from "@shared/schema";
 
 export default function ProjectPage({ id }: { id: string }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -24,7 +24,7 @@ export default function ProjectPage({ id }: { id: string }) {
   
   const projectId = parseInt(id);
   
-  const { data: project, isLoading: isProjectLoading } = useQuery<Project>({
+  const { data: project, isLoading: isProjectLoading } = useQuery<ProjectWithMembers>({
     queryKey: [`/api/projects/${projectId}`],
   });
   
@@ -111,7 +111,7 @@ export default function ProjectPage({ id }: { id: string }) {
               </div>
               <div className="flex items-center space-x-2 mt-4 md:mt-0">
                 <div className="flex -space-x-2">
-                  {project?.members?.slice(0, 3).map(member => (
+                  {project?.members?.slice(0, 3).map((member: User) => (
                     <div 
                       key={member.id}
                       className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs border-2 border-white z-10"

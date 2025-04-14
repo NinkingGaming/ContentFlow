@@ -100,7 +100,7 @@ export function EditProjectModal({ project, users, open, onOpenChange }: EditPro
   // Mutation for adding team member
   const addMemberMutation = useMutation({
     mutationFn: async (userId: number) => {
-      const res = await apiRequest("POST", `/api/projects/${project.id}/members`, { userId });
+      const res = await apiRequest("POST", `/api/projects/${project.id}/members`, { userId }, {});
       return await res.json();
     },
     onSuccess: (data) => {
@@ -125,7 +125,7 @@ export function EditProjectModal({ project, users, open, onOpenChange }: EditPro
   // Mutation for removing team member
   const removeMemberMutation = useMutation({
     mutationFn: async (userId: number) => {
-      const res = await apiRequest("DELETE", `/api/projects/${project.id}/members/${userId}`);
+      const res = await apiRequest("DELETE", `/api/projects/${project.id}/members/${userId}`, null, {});
       return await res.json();
     },
     onSuccess: (data) => {
