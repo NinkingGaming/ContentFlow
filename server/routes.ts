@@ -359,7 +359,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const user = req.user as any;
-      if (project.createdBy !== user.id) {
+      // Allow admins or project creators to delete projects
+      if (project.createdBy !== user.id && user.role !== 'admin') {
         return res.status(403).json({ message: "Forbidden" });
       }
       
