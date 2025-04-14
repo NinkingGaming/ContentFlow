@@ -1,10 +1,12 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { db } from "./db";
 import { 
   insertUserSchema, insertProjectSchema, insertColumnSchema, 
   insertContentSchema, insertAttachmentSchema, insertYoutubeVideoSchema,
-  insertProjectFileSchema, insertProjectFolderSchema, insertScriptDataSchema
+  insertProjectFileSchema, insertProjectFolderSchema, insertScriptDataSchema,
+  columns
 } from "../shared/schema";
 import { z } from "zod";
 import { ZodError } from "zod";
@@ -280,13 +282,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/projects", isAuthenticated, async (req, res) => {
     try {
+      console.log("Creating project with payload:", req.body);
       const user = req.user as any;
+      
       const projectData = insertProjectSchema.parse({
         ...req.body,
         createdBy: user.id
       });
       
+      console.log("Validated project data:", projectData);
+      
       const project = await storage.createProject(projectData);
+      console.log("Project created successfully:", project);
+      
+      // Add all admin users to project
+      try {
+        const adminUsers = await storage.getUsers().then(users => 
+          users.filter(u => u.role === 'admin')
+        );
+        
+        console.log(`Found ${adminUsers.length} admin users to add to project ${project.id}`);
+        
+        for (const admin of adminUsers) {
+          await storage.addProjectMember({
+            projectId: project.id,
+            userId: admin.id
+          });
+        }
+      } catch (adminError) {
+        console.error("Error adding admin users to project:", adminError);
+        // Continue even if adding admins fails
+      }
       
       // Add members if provided
       if (req.body.memberIds && Array.isArray(req.body.memberIds)) {
@@ -298,33 +324,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Create default columns
-      const defaultColumns = [
-        { name: "Ideation", color: "#EAB308", order: 0 },
-        { name: "Pre-Production", color: "#3B82F6", order: 1 },
-        { name: "Production", color: "#8B5CF6", order: 2 },
-        { name: "Post-Production", color: "#10B981", order: 3 }
-      ];
-      
-      // First, check the database schema
-      console.log("Creating columns with the following schema:", defaultColumns);
-      
-      for (const column of defaultColumns) {
-        try {
-          const columnData = {
+      // Create default columns - using direct database insert
+      try {
+        // Direct db operations for column creation
+        
+        // Create Ideation column
+        await db
+          .insert(columns)
+          .values({
             projectId: project.id,
-            name: column.name,
-            color: column.color,
-            order: column.order
-          };
-          
-          console.log("Creating column with data:", columnData);
-          
-          await storage.createColumn(columnData);
-        } catch (columnError) {
-          console.error("Error creating column:", columnError);
-          throw columnError;
-        }
+            name: "Ideation",
+            color: "#EAB308",
+            order: 0
+          });
+        
+        // Create Pre-Production column
+        await db
+          .insert(columns)
+          .values({
+            projectId: project.id,
+            name: "Pre-Production",
+            color: "#3B82F6",
+            order: 1
+          });
+        
+        // Create Production column
+        await db
+          .insert(columns)
+          .values({
+            projectId: project.id,
+            name: "Production", 
+            color: "#8B5CF6",
+            order: 2
+          });
+        
+        // Create Post-Production column
+        await db
+          .insert(columns)
+          .values({
+            projectId: project.id,
+            name: "Post-Production",
+            color: "#10B981",
+            order: 3
+          });
+      } catch (columnError) {
+        console.error("Error creating columns:", columnError);
+        throw columnError;
       }
       
       res.status(201).json(project);
