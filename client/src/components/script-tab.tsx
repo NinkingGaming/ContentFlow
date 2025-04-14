@@ -286,16 +286,24 @@ export function ScriptTab({ projectId }: { projectId: number }) {
   
   // Fetch published finals
   useEffect(() => {
-    // In a real implementation, this would fetch from the server
-    // For now, we'll just use a mock fetch from local storage
-    const storedFinals = localStorage.getItem(`project-${projectId}-finals`);
-    if (storedFinals) {
+    const fetchPublishedFinals = async () => {
       try {
-        setPublishedFinals(JSON.parse(storedFinals));
+        const response = await fetch(`/api/projects/${projectId}/published-finals`, {
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setPublishedFinals(data);
+        } else {
+          console.error("Failed to fetch published finals:", response.statusText);
+        }
       } catch (error) {
-        console.error("Failed to parse stored finals", error);
+        console.error("Error fetching published finals:", error);
       }
-    }
+    };
+    
+    fetchPublishedFinals();
   }, [projectId]);
 
   // Send current shot to final
@@ -330,13 +338,32 @@ export function ScriptTab({ projectId }: { projectId: number }) {
   };
   
   // View a published final
-  const viewFinal = (doc: PublishedFinal) => {
-    setSelectedFinal(doc);
-    setFinalViewDialogOpen(true);
+  const viewFinal = async (doc: PublishedFinal) => {
+    try {
+      // Fetch the full details of the published final
+      const response = await fetch(`/api/published-finals/${doc.id}`, {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch document details');
+      }
+      
+      const finalData = await response.json();
+      setSelectedFinal(finalData);
+      setFinalViewDialogOpen(true);
+    } catch (error) {
+      console.error("Error fetching published final:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load the published document",
+        variant: "destructive"
+      });
+    }
   };
   
   // Publish the current final content to the Documents tab
-  const publishFinal = () => {
+  const publishFinal = async () => {
     if (!finalContent || finalContent === "<p>Final formatted content will appear here...</p>") {
       toast({
         title: "Cannot Publish Empty Document",
@@ -355,52 +382,54 @@ export function ScriptTab({ projectId }: { projectId: number }) {
       return;
     }
     
-    // Get the current date for the document title
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-    
-    // Determine the version number by checking existing documents
-    let version = 1;
-    const existingDocs = publishedFinals.filter(doc => 
-      doc.title.startsWith(`Final Script - ${dateStr}`)
-    );
-    
-    if (existingDocs.length > 0) {
-      // Extract versions from existing docs with the same date
-      const versions = existingDocs.map(doc => doc.version);
-      version = Math.max(...versions) + 1;
+    try {
+      // Get the current date for the document title
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+      
+      // Create a title for the document
+      const title = `Final Script - ${dateStr}`;
+      
+      // Send the request to create a new published final
+      const response = await fetch(`/api/projects/${projectId}/published-finals`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ title })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to publish document');
+      }
+      
+      // Get the newly created final
+      const newFinal = await response.json();
+      
+      // Add the new final to the list
+      setPublishedFinals(prev => [...prev, newFinal]);
+      
+      toast({
+        title: "Document Published",
+        description: `Version ${newFinal.version} has been published to the Documents tab.`,
+      });
+      
+      // Switch to the documents tab
+      setActiveTab("documents");
+    } catch (error) {
+      console.error("Error publishing document:", error);
+      toast({
+        title: "Publish Failed",
+        description: error instanceof Error ? error.message : "An error occurred while publishing the document",
+        variant: "destructive"
+      });
     }
-    
-    // Create the new published final
-    const newFinal: PublishedFinal = {
-      id: Date.now(), // In a real implementation, this would be from the server
-      projectId: projectId,
-      title: `Final Script - ${dateStr}`,
-      content: finalContent,
-      version: version,
-      publishedAt: now,
-      publishedBy: user.id
-    };
-    
-    // Add the new final to the list
-    const updatedFinals = [...publishedFinals, newFinal];
-    setPublishedFinals(updatedFinals);
-    
-    // In a real implementation, this would be saved to the server
-    // For now, we'll just use local storage
-    localStorage.setItem(`project-${projectId}-finals`, JSON.stringify(updatedFinals));
-    
-    toast({
-      title: "Document Published",
-      description: `Version ${version} has been published to the Documents tab.`,
-    });
-    
-    // Switch to the documents tab
-    setActiveTab("documents");
   };
   
   return (
