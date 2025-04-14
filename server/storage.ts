@@ -1158,11 +1158,40 @@ export class DatabaseStorage implements IStorage {
   
   // Chat channel members operations
   async addChatChannelMember(insertMember: InsertChatChannelMember): Promise<ChatChannelMember> {
-    const [member] = await db
-      .insert(chatChannelMembers)
-      .values(insertMember)
-      .returning();
-    return member;
+    try {
+      console.log("Adding channel member:", insertMember);
+      
+      // Check if member already exists to prevent duplicate insertion
+      const existingMembers = await db
+        .select()
+        .from(chatChannelMembers)
+        .where(
+          and(
+            eq(chatChannelMembers.channelId, insertMember.channelId),
+            eq(chatChannelMembers.userId, insertMember.userId)
+          )
+        );
+      
+      console.log("Existing members check:", existingMembers);
+      
+      // If member already exists, return it
+      if (existingMembers.length > 0) {
+        console.log("Member already exists, returning existing member");
+        return existingMembers[0];
+      }
+      
+      // Otherwise insert the new member
+      const [member] = await db
+        .insert(chatChannelMembers)
+        .values(insertMember)
+        .returning();
+      
+      console.log("Added new member:", member);
+      return member;
+    } catch (error) {
+      console.error("Error adding chat channel member:", error);
+      throw error;
+    }
   }
 
   async removeChatChannelMember(channelId: number, userId: number): Promise<boolean> {

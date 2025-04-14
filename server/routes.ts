@@ -1326,6 +1326,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { otherUserId } = schema.parse(req.body);
       console.log("Other user ID:", otherUserId);
       
+      // Validate that user is not trying to DM themselves
+      if (user.id === otherUserId) {
+        return res.status(400).json({ message: "Cannot create a DM channel with yourself" });
+      }
+      
       // Check if otherUser exists
       const otherUser = await storage.getUser(otherUserId);
       console.log("Other user:", otherUser);
@@ -1333,57 +1338,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
-      // Check if a DM channel already exists
-      console.log("Checking for existing DM channel between user IDs:", [user.id, otherUserId]);
-      const existingChannel = await storage.getChatChannelByUsers([user.id, otherUserId]);
-      console.log("Existing channel:", existingChannel);
-      
-      if (existingChannel) {
-        console.log("Found existing channel, getting members");
-        const channelWithMembers = await storage.getChatChannelWithMembers(existingChannel.id);
-        return res.json(channelWithMembers);
+      try {
+        // Check if a DM channel already exists
+        console.log("Checking for existing DM channel between user IDs:", [user.id, otherUserId]);
+        const existingChannel = await storage.getChatChannelByUsers([user.id, otherUserId]);
+        console.log("Existing channel:", existingChannel);
+        
+        if (existingChannel) {
+          console.log("Found existing channel, getting members");
+          const channelWithMembers = await storage.getChatChannelWithMembers(existingChannel.id);
+          return res.json(channelWithMembers);
+        }
+        
+        const client = await pool.connect();
+        
+        try {
+          await client.query('BEGIN');
+          
+          // Create a new DM channel
+          const channelName = `DM: ${user.displayName} & ${otherUser.displayName}`;
+          console.log("Creating new DM channel with name:", channelName);
+          
+          // Insert the channel with a raw query to ensure proper handling
+          const channelResult = await client.query(`
+            INSERT INTO chat_channels (name, description, is_private, is_direct_message, created_by, created_at)
+            VALUES ($1, $2, $3, $4, $5, NOW())
+            RETURNING *
+          `, [channelName, "Direct Messages", true, true, user.id]);
+          
+          const channel = channelResult.rows[0];
+          console.log("Created channel:", channel);
+          
+          // Add both users to the channel
+          console.log("Adding user to channel:", user.id);
+          await client.query(`
+            INSERT INTO chat_channel_members (channel_id, user_id, is_admin, joined_at)
+            VALUES ($1, $2, $3, NOW())
+          `, [channel.id, user.id, true]);
+          
+          console.log("Adding other user to channel:", otherUserId);
+          await client.query(`
+            INSERT INTO chat_channel_members (channel_id, user_id, is_admin, joined_at)
+            VALUES ($1, $2, $3, NOW())
+          `, [channel.id, otherUserId, false]);
+          
+          await client.query('COMMIT');
+          
+          // Get the channel with its members
+          console.log("Getting channel with members");
+          const channelWithMembers = await storage.getChatChannelWithMembers(channel.id);
+          console.log("Channel with members:", channelWithMembers);
+          
+          res.status(201).json(channelWithMembers);
+        } catch (dbError) {
+          await client.query('ROLLBACK');
+          console.error("Database error creating DM channel:", dbError);
+          throw dbError;
+        } finally {
+          client.release();
+        }
+      } catch (channelError) {
+        console.error("Error in channel operations:", channelError);
+        throw new Error(`Channel operation failed: ${channelError.message}`);
       }
-      
-      // Create a new DM channel
-      const channelName = `DM: ${user.displayName} & ${otherUser.displayName}`;
-      console.log("Creating new DM channel with name:", channelName);
-      
-      const channel = await storage.createChatChannel({
-        name: channelName,
-        description: "Direct Messages",
-        isPrivate: true,
-        isDirectMessage: true,
-        createdBy: user.id
-      });
-      console.log("Created channel:", channel);
-      
-      // Add both users to the channel
-      console.log("Adding user to channel:", user.id);
-      await storage.addChatChannelMember({
-        channelId: channel.id,
-        userId: user.id,
-        isAdmin: true
-      });
-      
-      console.log("Adding other user to channel:", otherUserId);
-      await storage.addChatChannelMember({
-        channelId: channel.id,
-        userId: otherUserId,
-        isAdmin: false
-      });
-      
-      // Get the channel with its members
-      console.log("Getting channel with members");
-      const channelWithMembers = await storage.getChatChannelWithMembers(channel.id);
-      console.log("Channel with members:", channelWithMembers);
-      
-      res.status(201).json(channelWithMembers);
     } catch (error) {
       console.error("Error creating DM channel:", error);
       if (error instanceof ZodError) {
         return res.status(400).json({ message: error.message });
       }
-      return res.status(500).json({ message: "Server error" });
+      return res.status(500).json({ 
+        message: "Server error creating direct message channel",
+        details: error.message
+      });
     }
   });
   

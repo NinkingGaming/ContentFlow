@@ -157,6 +157,9 @@ export function ChatTab() {
               </Button>
             </DialogTrigger>
             <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create New Channel</DialogTitle>
+              </DialogHeader>
               <ChatChannelDialog />
             </DialogContent>
           </Dialog>
