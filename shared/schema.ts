@@ -321,7 +321,10 @@ export const insertPublishedFinalSchema = createInsertSchema(publishedFinals).om
   publishedAt: true,
 });
 
-export type PublishedFinal = typeof publishedFinals.$inferSelect;
+export type PublishedFinal = typeof publishedFinals.$inferSelect & {
+  creatorDisplayName?: string;
+  createdAt?: string;
+};
 export type InsertPublishedFinal = z.infer<typeof insertPublishedFinalSchema>;
 
 // Custom script data types

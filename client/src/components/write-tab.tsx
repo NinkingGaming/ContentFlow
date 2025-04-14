@@ -1,10 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { FileText, PenTool, Lightbulb, FileEdit, Table } from "lucide-react";
-import { useScriptData } from "@/hooks/use-script-data";
+import { PenTool, Lightbulb, FileEdit, Table } from "lucide-react";
 import { AuthProvider } from "@/lib/auth";
-import { ScriptTab } from "@/components/script-tab";
+import { 
+  SheetTabContent, 
+  MicroTabContent, 
+  ScriptTabContent, 
+  DocumentsTabContent 
+} from "@/components/script-content";
 
 export function WriteTab({ projectId }: { projectId: number }) {
   const [activeWriteTab, setActiveWriteTab] = useState("sheet");
@@ -38,7 +42,7 @@ export function WriteTab({ projectId }: { projectId: number }) {
             <Card>
               <CardContent className="pt-6">
                 <AuthProvider>
-                  <ScriptTab projectId={projectId} initialTab="sheet" />
+                  <SheetTabContent projectId={projectId} />
                 </AuthProvider>
               </CardContent>
             </Card>
@@ -48,7 +52,7 @@ export function WriteTab({ projectId }: { projectId: number }) {
             <Card>
               <CardContent className="pt-6">
                 <AuthProvider>
-                  <ScriptTab projectId={projectId} initialTab="micro" />
+                  <MicroTabContent projectId={projectId} />
                 </AuthProvider>
               </CardContent>
             </Card>
@@ -58,7 +62,7 @@ export function WriteTab({ projectId }: { projectId: number }) {
             <Card>
               <CardContent className="pt-6">
                 <AuthProvider>
-                  <ScriptTab projectId={projectId} initialTab="script" />
+                  <ScriptTabContent projectId={projectId} />
                 </AuthProvider>
               </CardContent>
             </Card>
@@ -68,7 +72,7 @@ export function WriteTab({ projectId }: { projectId: number }) {
             <Card>
               <CardContent className="pt-6">
                 <AuthProvider>
-                  <ScriptTab projectId={projectId} initialTab="documents" />
+                  <DocumentsTabContent projectId={projectId} />
                 </AuthProvider>
               </CardContent>
             </Card>
