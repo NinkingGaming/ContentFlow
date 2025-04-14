@@ -156,6 +156,9 @@ export function Sidebar({ projects, isOpen, onToggle, onNewProject }: SidebarPro
       {/* Chat Dialog */}
       <Dialog open={isChatDialogOpen} onOpenChange={setIsChatDialogOpen}>
         <DialogContent className="max-w-md h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Team Chat</DialogTitle>
+          </DialogHeader>
           <div className="h-full flex flex-col overflow-hidden">
             <ChatTab />
           </div>

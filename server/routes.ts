@@ -1214,16 +1214,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/chat/channels", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
+      console.log("Fetching chat channels for user ID:", user.id);
       const channels = await storage.getChatChannelsByUser(user.id);
+      console.log("Retrieved channels:", channels);
       
       // Get members for each channel
       const channelsWithMembers = await Promise.all(channels.map(async (channel) => {
+        console.log("Getting members for channel ID:", channel.id);
         const members = await storage.getChatChannelMembers(channel.id);
+        console.log("Retrieved members:", members);
         return { ...channel, members };
       }));
       
       res.json(channelsWithMembers);
     } catch (error) {
+      console.error("Error getting chat channels:", error);
       res.status(500).json({ message: "Server error" });
     }
   });
@@ -1312,29 +1317,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/chat/channels/dm", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
+      console.log("Creating DM channel for user:", user);
       
       const schema = z.object({
         otherUserId: z.number()
       });
       
       const { otherUserId } = schema.parse(req.body);
+      console.log("Other user ID:", otherUserId);
       
       // Check if otherUser exists
       const otherUser = await storage.getUser(otherUserId);
+      console.log("Other user:", otherUser);
       if (!otherUser) {
         return res.status(404).json({ message: "User not found" });
       }
       
       // Check if a DM channel already exists
+      console.log("Checking for existing DM channel between user IDs:", [user.id, otherUserId]);
       const existingChannel = await storage.getChatChannelByUsers([user.id, otherUserId]);
+      console.log("Existing channel:", existingChannel);
       
       if (existingChannel) {
+        console.log("Found existing channel, getting members");
         const channelWithMembers = await storage.getChatChannelWithMembers(existingChannel.id);
         return res.json(channelWithMembers);
       }
       
       // Create a new DM channel
       const channelName = `DM: ${user.displayName} & ${otherUser.displayName}`;
+      console.log("Creating new DM channel with name:", channelName);
       
       const channel = await storage.createChatChannel({
         name: channelName,
@@ -1343,14 +1355,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isDirectMessage: true,
         createdBy: user.id
       });
+      console.log("Created channel:", channel);
       
       // Add both users to the channel
+      console.log("Adding user to channel:", user.id);
       await storage.addChatChannelMember({
         channelId: channel.id,
         userId: user.id,
         isAdmin: true
       });
       
+      console.log("Adding other user to channel:", otherUserId);
       await storage.addChatChannelMember({
         channelId: channel.id,
         userId: otherUserId,
@@ -1358,10 +1373,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Get the channel with its members
+      console.log("Getting channel with members");
       const channelWithMembers = await storage.getChatChannelWithMembers(channel.id);
+      console.log("Channel with members:", channelWithMembers);
       
       res.status(201).json(channelWithMembers);
     } catch (error) {
+      console.error("Error creating DM channel:", error);
       if (error instanceof ZodError) {
         return res.status(400).json({ message: error.message });
       }
