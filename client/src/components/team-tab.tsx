@@ -82,6 +82,10 @@ export function TeamTab() {
   const updateUserRoleMutation = useMutation({
     mutationFn: async ({ userId, role }: { userId: number; role: UserRoleType }) => {
       const res = await apiRequest("PATCH", `/api/users/${userId}`, { role });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to update user role");
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -104,6 +108,10 @@ export function TeamTab() {
   const addUserMutation = useMutation({
     mutationFn: async (userData: any) => {
       const res = await apiRequest("POST", "/api/users", userData);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to add user");
+      }
       return res.json();
     },
     onSuccess: () => {
