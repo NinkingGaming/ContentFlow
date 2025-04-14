@@ -307,10 +307,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ];
       
       for (const column of defaultColumns) {
-        await storage.createColumn({
-          ...column,
-          projectId: project.id
-        });
+        try {
+          await storage.createColumn({
+            ...column,
+            projectId: project.id
+          });
+        } catch (columnError) {
+          console.error("Error creating column:", columnError);
+          throw columnError;
+        }
       }
       
       res.status(201).json(project);
