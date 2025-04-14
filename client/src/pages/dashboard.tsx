@@ -89,46 +89,44 @@ export default function Dashboard() {
                   ) : projects.length > 0 ? (
                     projects.map(project => (
                       <Link key={project.id} href={`/projects/${project.id}`}>
-                        <a className="block">
-                          <Card className="shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full">
-                            <CardContent className="p-6 flex flex-col h-full">
-                              <div className="flex-1">
-                                <div className="flex items-center mb-4">
-                                  {project.type.includes("YouTube") ? (
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>
-                                  ) : (
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>
-                                  )}
-                                  <h3 className="text-lg font-semibold text-neutral-900">{project.name}</h3>
+                      <Card className="shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full">
+                        <CardContent className="p-6 flex flex-col h-full">
+                          <div className="flex-1">
+                            <div className="flex items-center mb-4">
+                              {project.type.includes("YouTube") ? (
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>
+                              ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>
+                              )}
+                              <h3 className="text-lg font-semibold text-neutral-900">{project.name}</h3>
+                            </div>
+                            <p className="text-sm text-neutral-600 mb-4">{project.description}</p>
+                            <div className="text-xs text-neutral-500">{project.type}</div>
+                          </div>
+                          <div className="flex items-center justify-between mt-4 pt-4 border-t border-neutral-200">
+                            <div className="flex -space-x-2">
+                              {project.members?.slice(0, 3).map(member => (
+                                <div 
+                                  key={member.id}
+                                  className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs border-2 border-white"
+                                  style={{ backgroundColor: member.avatarColor || "#3B82F6" }}
+                                >
+                                  {member.avatarInitials}
                                 </div>
-                                <p className="text-sm text-neutral-600 mb-4">{project.description}</p>
-                                <div className="text-xs text-neutral-500">{project.type}</div>
-                              </div>
-                              <div className="flex items-center justify-between mt-4 pt-4 border-t border-neutral-200">
-                                <div className="flex -space-x-2">
-                                  {project.members?.slice(0, 3).map(member => (
-                                    <div 
-                                      key={member.id}
-                                      className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs border-2 border-white"
-                                      style={{ backgroundColor: member.avatarColor || "#3B82F6" }}
-                                    >
-                                      {member.avatarInitials}
-                                    </div>
-                                  ))}
-                                  {project.members && project.members.length > 3 && (
-                                    <div className="w-6 h-6 rounded-full bg-neutral-200 flex items-center justify-center text-xs border-2 border-white text-neutral-600">
-                                      +{project.members.length - 3}
-                                    </div>
-                                  )}
+                              ))}
+                              {project.members && project.members.length > 3 && (
+                                <div className="w-6 h-6 rounded-full bg-neutral-200 flex items-center justify-center text-xs border-2 border-white text-neutral-600">
+                                  +{project.members.length - 3}
                                 </div>
-                                <div className="text-xs text-neutral-500">
-                                  {new Date(project.createdAt).toLocaleDateString()}
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </a>
-                      </Link>
+                              )}
+                            </div>
+                            <div className="text-xs text-neutral-500">
+                              {new Date(project.createdAt).toLocaleDateString()}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
                     ))
                   ) : (
                     <div className="col-span-full flex flex-col items-center justify-center py-12 text-center">
