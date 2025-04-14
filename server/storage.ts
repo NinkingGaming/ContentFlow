@@ -180,7 +180,7 @@ export class DatabaseStorage implements IStorage {
       console.log(`Found ${userProjects.rowCount} projects created by this user`);
       
       // For each project created by this user, either delete it or reassign it
-      if (userProjects.rowCount > 0) {
+      if (userProjects && userProjects.rowCount && userProjects.rowCount > 0) {
         // Option: Reassign projects to mastercontrol (id=6)
         await client.query(`
           UPDATE projects SET created_by = 6 WHERE created_by = $1
@@ -319,7 +319,7 @@ export class DatabaseStorage implements IStorage {
         SELECT id, role FROM users WHERE id = $1
       `, [insertProject.createdBy]);
       
-      if (creatorResult.rowCount > 0) {
+      if (creatorResult && creatorResult.rowCount && creatorResult.rowCount > 0) {
         const creator = creatorResult.rows[0];
         if (creator.role !== UserRole.ADMIN) {
           await client.query(`
