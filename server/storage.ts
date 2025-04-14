@@ -80,6 +80,11 @@ export interface IStorage {
   createProjectFolder(folder: InsertProjectFolder): Promise<ProjectFolder>;
   updateProjectFolder(id: number, folder: Partial<InsertProjectFolder>): Promise<ProjectFolder | undefined>;
   deleteProjectFolder(id: number): Promise<boolean>;
+  
+  // Script data operations
+  getScriptData(projectId: number): Promise<ScriptData | undefined>;
+  createScriptData(data: InsertScriptData): Promise<ScriptData>;
+  updateScriptData(projectId: number, data: Partial<InsertScriptData>): Promise<ScriptData | undefined>;
 }
 
 export type ProjectWithMembers = Project & {

@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, primaryKey, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -156,6 +156,25 @@ export const insertYoutubeVideoSchema = createInsertSchema(youtubeVideos).omit({
   updatedAt: true,
 });
 
+// Script data table
+export const scriptData = pgTable("script_data", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id),
+  scriptContent: text("script_content").notNull(),
+  finalContent: text("final_content"),
+  correlations: jsonb("correlations").notNull(),
+  spreadsheetData: jsonb("spreadsheet_data").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").notNull().references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertScriptDataSchema = createInsertSchema(scriptData).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Export types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -207,3 +226,24 @@ export type ProjectFolderWithParent = ProjectFolder & {
   files?: ProjectFile[];
   subfolders?: ProjectFolder[];
 };
+
+export type ScriptData = typeof scriptData.$inferSelect;
+export type InsertScriptData = z.infer<typeof insertScriptDataSchema>;
+
+// Custom script data types
+export interface ScriptCorrelation {
+  textId: string;
+  shotNumber: number;
+  text: string;
+}
+
+export interface SpreadsheetRow {
+  id: number;
+  generalData: string;
+  shotNumber: number;
+  shotData1: string; // Slug
+  shotData2: string; // On-Screen
+  shotData3: string; // Cam. Op.
+  shotData4: string; // Location
+  hasCorrelation: boolean;
+}
