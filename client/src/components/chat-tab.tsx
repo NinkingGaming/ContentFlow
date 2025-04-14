@@ -29,8 +29,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { useQuery } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
 // Main Chat Tab Component
@@ -433,22 +433,38 @@ function NewDirectMessageButton({ users }: { users: any[] }) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   
+  // State for dialog open/close
+  const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
   // Filter out the current user from the list
   const filteredUsers = users.filter(user => user.id !== currentUser?.id);
   
   const handleStartDM = async (userId: number) => {
+    if (userId === currentUser?.id) {
+      toast({
+        title: "Error",
+        description: "You cannot create a direct message with yourself",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     try {
-      if (userId === currentUser?.id) {
-        toast({
-          title: "Error",
-          description: "You cannot create a direct message with yourself",
-          variant: "destructive"
-        });
-        return;
-      }
+      setIsLoading(true);
       
       const channel = await createOrGetDirectMessageChannel(userId);
       setCurrentChannel(channel);
+      
+      // Show success notification
+      toast({
+        title: "Success",
+        description: "Direct message channel created",
+        variant: "default"
+      });
+      
+      // Close the dialog
+      setIsOpen(false);
     } catch (error) {
       console.error("Error creating DM channel:", error);
       toast({
@@ -456,11 +472,13 @@ function NewDirectMessageButton({ users }: { users: any[] }) {
         description: "Failed to create direct message channel",
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
   };
   
   return (
-    <Dialog>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <div className="px-3 py-1.5 rounded-md cursor-pointer flex items-center hover:bg-neutral-50 text-sm text-neutral-600">
           <User className="h-3.5 w-3.5 mr-2" />
@@ -498,6 +516,9 @@ function NewDirectMessageButton({ users }: { users: any[] }) {
                       <div className="font-medium">{user.displayName}</div>
                       <div className="text-xs text-neutral-500">@{user.username}</div>
                     </div>
+                    {isLoading && user.id === filteredUsers[0].id && 
+                      <Loader2 className="ml-auto h-4 w-4 animate-spin text-neutral-400" />
+                    }
                   </div>
                 ))
               )}
@@ -512,29 +533,202 @@ function NewDirectMessageButton({ users }: { users: any[] }) {
 // Channel Settings Button Component
 function ChannelSettingsButton({ channel }: { channel: ChatChannel }) {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const [showDetails, setShowDetails] = useState(false);
+  const [showMembers, setShowMembers] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   // Check if user is admin or channel creator
   const isAdmin = user?.role === 'admin';
   const isCreator = channel.createdBy === user?.id;
   const canManageChannel = isAdmin || isCreator;
   
+  // Delete Channel Mutation
+  const deleteChannelMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('DELETE', `/api/chat/channels/${channel.id}`, {});
+      if (!res.ok) {
+        throw new Error('Failed to delete channel');
+      }
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/chat/channels'] });
+      toast({
+        title: "Channel Deleted",
+        description: `Channel "${channel.name}" has been deleted`,
+        variant: "default"
+      });
+      setShowDeleteConfirm(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete channel",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  const handleDeleteChannel = async () => {
+    deleteChannelMutation.mutate();
+  };
+  
   if (!canManageChannel) return null;
   
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8">
-          <Settings className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem>Channel Details</DropdownMenuItem>
-        <DropdownMenuItem>Manage Members</DropdownMenuItem>
-        {!channel.isDirectMessage && (
-          <DropdownMenuItem className="text-red-600">Delete Channel</DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Settings className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={() => setShowDetails(true)}>
+            Channel Details
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setShowMembers(true)}>
+            Manage Members
+          </DropdownMenuItem>
+          {!channel.isDirectMessage && (
+            <DropdownMenuItem 
+              className="text-red-600"
+              onSelect={() => setShowDeleteConfirm(true)}
+            >
+              Delete Channel
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      
+      {/* Channel Details Dialog */}
+      <Dialog open={showDetails} onOpenChange={setShowDetails}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Channel Details</DialogTitle>
+            <DialogDescription>
+              View and edit channel information
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label htmlFor="channel-name">Name</Label>
+              <Input 
+                id="channel-name" 
+                defaultValue={channel.name}
+                readOnly={channel.isDirectMessage}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="channel-description">Description</Label>
+              <Input 
+                id="channel-description" 
+                defaultValue={channel.description || ''}
+                readOnly={channel.isDirectMessage}
+                placeholder="No description"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Channel Type</Label>
+              <p className="text-sm text-neutral-600">
+                {channel.isDirectMessage ? 'Direct Message' : channel.isPrivate ? 'Private Channel' : 'Public Channel'}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Created By</Label>
+              <p className="text-sm text-neutral-600">
+                {channel.members.find(m => m.id === channel.createdBy)?.displayName || 'Unknown'}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Created At</Label>
+              <p className="text-sm text-neutral-600">
+                {new Date(channel.createdAt).toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Manage Members Dialog */}
+      <Dialog open={showMembers} onOpenChange={setShowMembers}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Manage Members</DialogTitle>
+            <DialogDescription>
+              View and manage channel members
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4">
+            <h4 className="font-medium mb-2">Members ({channel.members.length})</h4>
+            <div className="max-h-[300px] overflow-y-auto space-y-2 border rounded-md p-2">
+              {channel.members.map(member => (
+                <div key={member.id} className="flex items-center justify-between py-2 px-2 hover:bg-neutral-50 rounded-md">
+                  <div className="flex items-center">
+                    <Avatar className="h-7 w-7 mr-3">
+                      <AvatarFallback style={{ backgroundColor: member.avatarColor }}>
+                        {member.avatarInitials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="font-medium">{member.displayName}</div>
+                      <div className="text-xs text-neutral-500">@{member.username}</div>
+                    </div>
+                  </div>
+                  {(isAdmin || isCreator) && member.id !== user?.id && !channel.isDirectMessage && (
+                    <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600">
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+            
+            {!channel.isDirectMessage && (
+              <>
+                <Separator className="my-4" />
+                <h4 className="font-medium mb-2">Add Members</h4>
+                <div className="flex space-x-2">
+                  <Input placeholder="Search users..." className="flex-1" />
+                  <Button variant="outline">Add</Button>
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Channel</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete the channel and all its messages.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4">
+            <p className="text-neutral-700 mb-4">
+              Are you sure you want to delete <span className="font-semibold">{channel.name}</span>?
+            </p>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleDeleteChannel}
+                disabled={deleteChannelMutation.isPending}
+              >
+                {deleteChannelMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Delete
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
