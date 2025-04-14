@@ -1064,19 +1064,36 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getChatChannelsByUser(userId: number): Promise<ChatChannel[]> {
-    const userMemberships = await db.select({
-      channelId: chatChannelMembers.channelId
-    }).from(chatChannelMembers).where(eq(chatChannelMembers.userId, userId));
+    try {
+      console.log(`Fetching chat channels for user ID: ${userId}`);
+      
+      const userMemberships = await db.select({
+        channelId: chatChannelMembers.channelId
+      }).from(chatChannelMembers).where(eq(chatChannelMembers.userId, userId));
 
-    const channelIds = userMemberships.map(m => m.channelId);
-    
-    if (channelIds.length === 0) {
-      return [];
+      const channelIds = userMemberships.map(m => m.channelId);
+      console.log(`Found channel IDs: ${channelIds}`);
+      
+      if (channelIds.length === 0) {
+        return [];
+      }
+
+      // Fetch channels individually to avoid SQL injection issues
+      const channels = await Promise.all(
+        channelIds.map(channelId => db
+          .select()
+          .from(chatChannels)
+          .where(eq(chatChannels.id, channelId))
+          .then(result => result[0])
+        )
+      );
+      
+      console.log(`Retrieved channels: ${JSON.stringify(channels.filter(Boolean))}`);
+      return channels.filter(Boolean);
+    } catch (error) {
+      console.error("Error getting chat channels:", error);
+      throw error;
     }
-
-    return await db.select().from(chatChannels).where(
-      sql`${chatChannels.id} IN (${channelIds.join(',')})`
-    );
   }
 
   async getChatChannelByUsers(userIds: number[]): Promise<ChatChannel | undefined> {
@@ -1211,48 +1228,92 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getChatChannelMembers(channelId: number): Promise<User[]> {
-    const memberships = await db
-      .select({
-        userId: chatChannelMembers.userId
-      })
-      .from(chatChannelMembers)
-      .where(eq(chatChannelMembers.channelId, channelId));
-    
-    const userIds = memberships.map(m => m.userId);
-    
-    if (userIds.length === 0) {
-      return [];
+    try {
+      console.log(`Getting members for channel ID: ${channelId}`);
+      
+      const memberships = await db
+        .select({
+          userId: chatChannelMembers.userId
+        })
+        .from(chatChannelMembers)
+        .where(eq(chatChannelMembers.channelId, channelId));
+      
+      const userIds = memberships.map(m => m.userId);
+      console.log(`Found user IDs in channel: ${userIds}`);
+      
+      if (userIds.length === 0) {
+        return [];
+      }
+      
+      // Use IN clause with proper parameter handling
+      const userList = await Promise.all(
+        userIds.map(userId => db
+          .select()
+          .from(users)
+          .where(eq(users.id, userId))
+          .then(result => result[0])
+        )
+      );
+      
+      return userList.filter(Boolean);
+    } catch (error) {
+      console.error("Error getting channel members:", error);
+      throw error;
     }
-    
-    return await db.select().from(users).where(
-      sql`${users.id} IN (${userIds.join(',')})`
-    );
   }
   
   // Chat messages operations
   async getChatMessages(channelId: number): Promise<ChatMessageWithSender[]> {
-    const messages = await db
-      .select()
-      .from(chatMessages)
-      .where(eq(chatMessages.channelId, channelId))
-      .orderBy(sql`${chatMessages.sentAt} ASC`);
-    
-    const senderIds = [...new Set(messages.map(m => m.senderId))];
-    
-    if (senderIds.length === 0) {
-      return [];
+    try {
+      console.log(`Getting messages for channel ID: ${channelId}`);
+      
+      const messages = await db
+        .select()
+        .from(chatMessages)
+        .where(eq(chatMessages.channelId, channelId))
+        .orderBy(sql`${chatMessages.sentAt} ASC`);
+      
+      if (messages.length === 0) {
+        return [];
+      }
+      
+      // Extract unique sender IDs
+      const senderIdsSet = new Set<number>();
+      messages.forEach(m => senderIdsSet.add(m.senderId));
+      const senderIds = Array.from(senderIdsSet);
+      
+      console.log(`Found message sender IDs: ${senderIds}`);
+      
+      // Get all senders with individual queries to avoid SQL injection issues
+      const senders = await Promise.all(
+        senderIds.map(senderId => db
+          .select()
+          .from(users)
+          .where(eq(users.id, senderId))
+          .then(result => result[0])
+        )
+      );
+      
+      // Create a map of sender ID to sender object
+      const senderMap = new Map();
+      senders.filter(Boolean).forEach(sender => senderMap.set(sender.id, sender));
+      
+      // Attach sender to each message
+      return messages.map(message => ({
+        ...message,
+        sender: senderMap.get(message.senderId) || {
+          id: message.senderId,
+          username: 'unknown',
+          displayName: 'Unknown User',
+          avatarInitials: 'UN',
+          avatarColor: '#999999',
+          role: 'user'
+        }
+      }));
+    } catch (error) {
+      console.error("Error getting chat messages:", error);
+      throw error;
     }
-    
-    const senders = await db.select().from(users).where(
-      sql`${users.id} IN (${senderIds.join(',')})`
-    );
-    
-    const senderMap = new Map(senders.map(s => [s.id, s]));
-    
-    return messages.map(message => ({
-      ...message,
-      sender: senderMap.get(message.senderId)!
-    }));
   }
 
   async createChatMessage(insertMessage: InsertChatMessage): Promise<ChatMessage> {
