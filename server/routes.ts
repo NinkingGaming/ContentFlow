@@ -6,7 +6,9 @@ import { pool } from "./db";
 import { 
   insertUserSchema, insertProjectSchema, insertColumnSchema, 
   insertContentSchema, insertAttachmentSchema, insertYoutubeVideoSchema,
-  insertProjectFileSchema, insertProjectFolderSchema, insertScriptDataSchema
+  insertProjectFileSchema, insertProjectFolderSchema, insertScriptDataSchema,
+  insertChatChannelSchema, insertChatChannelMemberSchema, insertChatMessageSchema,
+  UserRole
 } from "../shared/schema";
 import { z } from "zod";
 import { ZodError } from "zod";
@@ -1206,6 +1208,335 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== Chat Channel API ==========
+  
+  // Get all chat channels for current user
+  app.get("/api/chat/channels", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const channels = await storage.getChatChannelsByUser(user.id);
+      
+      // Get members for each channel
+      const channelsWithMembers = await Promise.all(channels.map(async (channel) => {
+        const members = await storage.getChatChannelMembers(channel.id);
+        return { ...channel, members };
+      }));
+      
+      res.json(channelsWithMembers);
+    } catch (error) {
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  // Get all global channels (non-DM channels)
+  app.get("/api/chat/channels/global", isAuthenticated, async (req, res) => {
+    try {
+      const channels = await storage.getChatChannels();
+      
+      // Get members for each channel
+      const channelsWithMembers = await Promise.all(channels.map(async (channel) => {
+        const members = await storage.getChatChannelMembers(channel.id);
+        return { ...channel, members };
+      }));
+      
+      res.json(channelsWithMembers);
+    } catch (error) {
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  // Get a specific channel
+  app.get("/api/chat/channels/:id", isAuthenticated, async (req, res) => {
+    try {
+      const channelId = parseInt(req.params.id);
+      const channel = await storage.getChatChannelWithMembers(channelId);
+      
+      if (!channel) {
+        return res.status(404).json({ message: "Channel not found" });
+      }
+      
+      res.json(channel);
+    } catch (error) {
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  // Create a new channel (admin or producer only)
+  app.post("/api/chat/channels", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      
+      // Only admins can create normal channels
+      if (user.role !== UserRole.ADMIN && user.role !== UserRole.PRODUCER) {
+        return res.status(403).json({ message: "Forbidden: Only admins and producers can create channels" });
+      }
+      
+      const channelData = insertChatChannelSchema.parse({
+        ...req.body,
+        createdBy: user.id
+      });
+      
+      const channel = await storage.createChatChannel(channelData);
+      
+      // Add creator as a member and admin of the channel
+      await storage.addChatChannelMember({
+        channelId: channel.id,
+        userId: user.id,
+        isAdmin: true
+      });
+      
+      // Add any additional members if specified
+      if (req.body.memberIds && Array.isArray(req.body.memberIds)) {
+        for (const memberId of req.body.memberIds) {
+          await storage.addChatChannelMember({
+            channelId: channel.id,
+            userId: memberId,
+            isAdmin: false
+          });
+        }
+      }
+      
+      // Get the channel with its members
+      const channelWithMembers = await storage.getChatChannelWithMembers(channel.id);
+      
+      res.status(201).json(channelWithMembers);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: error.message });
+      }
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  // Get or create a DM channel between two users
+  app.post("/api/chat/channels/dm", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      
+      const schema = z.object({
+        otherUserId: z.number()
+      });
+      
+      const { otherUserId } = schema.parse(req.body);
+      
+      // Check if otherUser exists
+      const otherUser = await storage.getUser(otherUserId);
+      if (!otherUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Check if a DM channel already exists
+      const existingChannel = await storage.getChatChannelByUsers([user.id, otherUserId]);
+      
+      if (existingChannel) {
+        const channelWithMembers = await storage.getChatChannelWithMembers(existingChannel.id);
+        return res.json(channelWithMembers);
+      }
+      
+      // Create a new DM channel
+      const channelName = `DM: ${user.displayName} & ${otherUser.displayName}`;
+      
+      const channel = await storage.createChatChannel({
+        name: channelName,
+        description: "Direct Messages",
+        isPrivate: true,
+        isDirectMessage: true,
+        createdBy: user.id
+      });
+      
+      // Add both users to the channel
+      await storage.addChatChannelMember({
+        channelId: channel.id,
+        userId: user.id,
+        isAdmin: true
+      });
+      
+      await storage.addChatChannelMember({
+        channelId: channel.id,
+        userId: otherUserId,
+        isAdmin: false
+      });
+      
+      // Get the channel with its members
+      const channelWithMembers = await storage.getChatChannelWithMembers(channel.id);
+      
+      res.status(201).json(channelWithMembers);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: error.message });
+      }
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  // Update a channel (admin or creator only)
+  app.put("/api/chat/channels/:id", isAuthenticated, async (req, res) => {
+    try {
+      const channelId = parseInt(req.params.id);
+      const channel = await storage.getChatChannel(channelId);
+      
+      if (!channel) {
+        return res.status(404).json({ message: "Channel not found" });
+      }
+      
+      const user = req.user as any;
+      
+      // Check if user is an admin of the channel or the creator
+      const members = await storage.getChatChannelMembers(channelId);
+      const userMembership = members.find(m => m.id === user.id);
+      
+      if (channel.createdBy !== user.id && user.role !== UserRole.ADMIN && !userMembership?.isAdmin) {
+        return res.status(403).json({ message: "Forbidden: You don't have permission to update this channel" });
+      }
+      
+      const updateSchema = insertChatChannelSchema.partial();
+      const updates = updateSchema.parse(req.body);
+      
+      const updatedChannel = await storage.updateChatChannel(channelId, updates);
+      res.json(updatedChannel);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: error.message });
+      }
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  // Delete a channel (admin or creator only)
+  app.delete("/api/chat/channels/:id", isAuthenticated, async (req, res) => {
+    try {
+      const channelId = parseInt(req.params.id);
+      const channel = await storage.getChatChannel(channelId);
+      
+      if (!channel) {
+        return res.status(404).json({ message: "Channel not found" });
+      }
+      
+      const user = req.user as any;
+      
+      // Only allow admins or channel creators to delete
+      if (channel.createdBy !== user.id && user.role !== UserRole.ADMIN) {
+        return res.status(403).json({ message: "Forbidden: You don't have permission to delete this channel" });
+      }
+      
+      await storage.deleteChatChannel(channelId);
+      res.json({ message: "Channel deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  // Channel members endpoints
+  app.post("/api/chat/channels/:id/members", isAuthenticated, async (req, res) => {
+    try {
+      const channelId = parseInt(req.params.id);
+      const channel = await storage.getChatChannel(channelId);
+      
+      if (!channel) {
+        return res.status(404).json({ message: "Channel not found" });
+      }
+      
+      const user = req.user as any;
+      
+      // Only allow admins or channel creators to add members
+      if (channel.createdBy !== user.id && user.role !== UserRole.ADMIN) {
+        return res.status(403).json({ message: "Forbidden: You don't have permission to add members" });
+      }
+      
+      const schema = z.object({
+        userId: z.number(),
+        isAdmin: z.boolean().optional()
+      });
+      
+      const { userId, isAdmin } = schema.parse(req.body);
+      
+      // Check if user exists
+      const userToAdd = await storage.getUser(userId);
+      if (!userToAdd) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Add member to channel
+      await storage.addChatChannelMember({
+        channelId,
+        userId,
+        isAdmin: isAdmin || false
+      });
+      
+      // Get updated member list
+      const members = await storage.getChatChannelMembers(channelId);
+      
+      res.status(201).json(members);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: error.message });
+      }
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  // Remove a member from a channel
+  app.delete("/api/chat/channels/:channelId/members/:userId", isAuthenticated, async (req, res) => {
+    try {
+      const channelId = parseInt(req.params.channelId);
+      const memberIdToRemove = parseInt(req.params.userId);
+      
+      const channel = await storage.getChatChannel(channelId);
+      
+      if (!channel) {
+        return res.status(404).json({ message: "Channel not found" });
+      }
+      
+      const user = req.user as any;
+      
+      // Direct message channels shouldn't allow member removal
+      if (channel.isDirectMessage) {
+        return res.status(403).json({ message: "Cannot remove members from direct message channels" });
+      }
+      
+      // Only allow admins, channel creators, or the member themselves to remove
+      if (channel.createdBy !== user.id && user.role !== UserRole.ADMIN && user.id !== memberIdToRemove) {
+        return res.status(403).json({ message: "Forbidden: You don't have permission to remove members" });
+      }
+      
+      await storage.removeChatChannelMember(channelId, memberIdToRemove);
+      
+      // Get updated member list
+      const members = await storage.getChatChannelMembers(channelId);
+      
+      res.json(members);
+    } catch (error) {
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  // Get messages from a channel
+  app.get("/api/chat/channels/:id/messages", isAuthenticated, async (req, res) => {
+    try {
+      const channelId = parseInt(req.params.id);
+      const channel = await storage.getChatChannel(channelId);
+      
+      if (!channel) {
+        return res.status(404).json({ message: "Channel not found" });
+      }
+      
+      const user = req.user as any;
+      
+      // Check if user is a member of the channel
+      const members = await storage.getChatChannelMembers(channelId);
+      const isMember = members.some(m => m.id === user.id);
+      
+      if (!isMember) {
+        return res.status(403).json({ message: "Forbidden: You are not a member of this channel" });
+      }
+      
+      const messages = await storage.getChatMessages(channelId);
+      res.json(messages);
+    } catch (error) {
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+
   const httpServer = createServer(app);
   
   // Setup WebSocket server (for real-time chat)
@@ -1218,7 +1549,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log('WebSocket client connected');
     let userId = null;
     
-    socket.on('message', (message) => {
+    socket.on('message', async (message) => {
       try {
         const data = JSON.parse(message.toString());
         console.log('Received message:', data);
@@ -1237,6 +1568,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }));
         }
         
+        // Handle join channel message
+        else if (data.type === 'join_channel') {
+          // Validate that the user is authenticated
+          if (!userId) {
+            socket.send(JSON.stringify({
+              type: 'error',
+              message: 'Not authenticated'
+            }));
+            return;
+          }
+          
+          const channelId = data.channelId;
+          
+          // Check if channel exists
+          const channel = await storage.getChatChannel(channelId);
+          if (!channel) {
+            socket.send(JSON.stringify({
+              type: 'error',
+              message: 'Channel not found'
+            }));
+            return;
+          }
+          
+          // Check if user is a member of the channel
+          const members = await storage.getChatChannelMembers(channelId);
+          const isMember = members.some(m => m.id === userId);
+          
+          if (!isMember) {
+            socket.send(JSON.stringify({
+              type: 'error',
+              message: 'You are not a member of this channel'
+            }));
+            return;
+          }
+          
+          // Store the channel with the user
+          socket.channelId = channelId;
+          
+          // Send confirmation
+          socket.send(JSON.stringify({
+            type: 'channel_joined',
+            channelId: channelId
+          }));
+          
+          // Send previous messages
+          const messages = await storage.getChatMessages(channelId);
+          socket.send(JSON.stringify({
+            type: 'message_history',
+            channelId: channelId,
+            messages: messages
+          }));
+        }
+        
         // Handle chat messages
         else if (data.type === 'chat_message') {
           // Validate that the user is authenticated
@@ -1248,26 +1632,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return;
           }
           
+          // Ensure we have a channel
+          const channelId = data.channelId || socket.channelId;
+          if (!channelId) {
+            socket.send(JSON.stringify({
+              type: 'error',
+              message: 'No channel selected'
+            }));
+            return;
+          }
+          
+          // Get the channel and check if user is a member
+          const channel = await storage.getChatChannel(channelId);
+          if (!channel) {
+            socket.send(JSON.stringify({
+              type: 'error',
+              message: 'Channel not found'
+            }));
+            return;
+          }
+          
+          const members = await storage.getChatChannelMembers(channelId);
+          const isMember = members.some(m => m.id === userId);
+          
+          if (!isMember) {
+            socket.send(JSON.stringify({
+              type: 'error',
+              message: 'You are not a member of this channel'
+            }));
+            return;
+          }
+          
+          // Save the message to the database
+          const sender = await storage.getUser(userId);
+          
+          // Create the message in the database
+          const chatMessage = await storage.createChatMessage({
+            channelId: channelId,
+            senderId: userId,
+            content: data.content
+          });
+          
+          // Create message data to broadcast
           const messageData = {
             type: 'chat_message',
-            id: Date.now().toString(),
+            id: chatMessage.id,
+            channelId: channelId,
             content: data.content,
             sender: {
-              id: userId,
-              username: data.sender.username,
-              displayName: data.sender.displayName,
-              avatarInitials: data.sender.avatarInitials,
-              avatarColor: data.sender.avatarColor
+              id: sender.id,
+              username: sender.username,
+              displayName: sender.displayName,
+              avatarInitials: sender.avatarInitials,
+              avatarColor: sender.avatarColor
             },
-            timestamp: new Date().toISOString()
+            sentAt: chatMessage.sentAt
           };
           
-          // Broadcast to all connected clients
-          wss.clients.forEach((client) => {
-            if (client.readyState === WebSocket.OPEN) {
-              client.send(JSON.stringify(messageData));
+          // Broadcast to all members of the channel
+          for (const member of members) {
+            const clientSocket = clients.get(member.id);
+            if (clientSocket && clientSocket.readyState === WebSocket.OPEN) {
+              clientSocket.send(JSON.stringify(messageData));
             }
-          });
+          }
+        }
+        
+        // Handle typing indicator
+        else if (data.type === 'typing') {
+          // Validate that the user is authenticated
+          if (!userId) {
+            socket.send(JSON.stringify({
+              type: 'error',
+              message: 'Not authenticated'
+            }));
+            return;
+          }
+          
+          // Ensure we have a channel
+          const channelId = data.channelId || socket.channelId;
+          if (!channelId) {
+            socket.send(JSON.stringify({
+              type: 'error',
+              message: 'No channel selected'
+            }));
+            return;
+          }
+          
+          // Get the user
+          const user = await storage.getUser(userId);
+          
+          // Broadcast typing indicator to channel members
+          const members = await storage.getChatChannelMembers(channelId);
+          
+          const typingData = {
+            type: 'user_typing',
+            channelId: channelId,
+            user: {
+              id: user.id,
+              username: user.username,
+              displayName: user.displayName
+            },
+            isTyping: data.isTyping
+          };
+          
+          // Send to all channel members except the sender
+          for (const member of members) {
+            if (member.id !== userId) {
+              const clientSocket = clients.get(member.id);
+              if (clientSocket && clientSocket.readyState === WebSocket.OPEN) {
+                clientSocket.send(JSON.stringify(typingData));
+              }
+            }
+          }
         }
       } catch (error) {
         console.error('Error processing WebSocket message:', error);

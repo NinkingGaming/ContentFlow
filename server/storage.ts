@@ -1040,6 +1040,195 @@ export class DatabaseStorage implements IStorage {
       });
     }
   }
+
+  // Chat operations
+  async getChatChannel(id: number): Promise<ChatChannel | undefined> {
+    const [channel] = await db.select().from(chatChannels).where(eq(chatChannels.id, id));
+    return channel;
+  }
+
+  async getChatChannelWithMembers(id: number): Promise<ChatChannelWithMembers | undefined> {
+    const channel = await this.getChatChannel(id);
+    if (!channel) return undefined;
+
+    const members = await this.getChatChannelMembers(id);
+    return { ...channel, members };
+  }
+
+  async getChatChannels(): Promise<ChatChannel[]> {
+    return await db.select().from(chatChannels).where(eq(chatChannels.isDirectMessage, false));
+  }
+
+  async getChatChannelsByUser(userId: number): Promise<ChatChannel[]> {
+    const userMemberships = await db.select({
+      channelId: chatChannelMembers.channelId
+    }).from(chatChannelMembers).where(eq(chatChannelMembers.userId, userId));
+
+    const channelIds = userMemberships.map(m => m.channelId);
+    
+    if (channelIds.length === 0) {
+      return [];
+    }
+
+    return await db.select().from(chatChannels).where(
+      sql`${chatChannels.id} IN (${channelIds.join(',')})`
+    );
+  }
+
+  async getChatChannelByUsers(userIds: number[]): Promise<ChatChannel | undefined> {
+    if (userIds.length !== 2) return undefined;
+    
+    // Check if a direct message channel already exists between these users
+    const client = await pool.connect();
+    
+    try {
+      // Find all DM channels for these users
+      const result = await client.query(`
+        WITH user_channels AS (
+          SELECT channel_id 
+          FROM chat_channel_members 
+          WHERE user_id = ANY($1::int[])
+          GROUP BY channel_id
+          HAVING COUNT(DISTINCT user_id) = $2
+        )
+        SELECT c.* 
+        FROM chat_channels c
+        JOIN user_channels uc ON c.id = uc.channel_id
+        WHERE c.is_direct_message = true
+      `, [userIds, userIds.length]);
+      
+      if (result.rows.length > 0) {
+        return result.rows[0];
+      }
+      
+      return undefined;
+    } finally {
+      client.release();
+    }
+  }
+
+  async createChatChannel(insertChannel: InsertChatChannel): Promise<ChatChannel> {
+    const [channel] = await db
+      .insert(chatChannels)
+      .values(insertChannel)
+      .returning();
+    return channel;
+  }
+
+  async updateChatChannel(id: number, updates: Partial<InsertChatChannel>): Promise<ChatChannel | undefined> {
+    const [channel] = await db
+      .update(chatChannels)
+      .set(updates)
+      .where(eq(chatChannels.id, id))
+      .returning();
+    return channel;
+  }
+
+  async deleteChatChannel(id: number): Promise<boolean> {
+    const client = await pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+      
+      // Delete all messages in the channel
+      await client.query(`
+        DELETE FROM chat_messages WHERE channel_id = $1
+      `, [id]);
+      
+      // Delete all channel members
+      await client.query(`
+        DELETE FROM chat_channel_members WHERE channel_id = $1
+      `, [id]);
+      
+      // Delete the channel
+      await client.query(`
+        DELETE FROM chat_channels WHERE id = $1
+      `, [id]);
+      
+      await client.query('COMMIT');
+      return true;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Error deleting chat channel:', error);
+      return false;
+    } finally {
+      client.release();
+    }
+  }
+  
+  // Chat channel members operations
+  async addChatChannelMember(insertMember: InsertChatChannelMember): Promise<ChatChannelMember> {
+    const [member] = await db
+      .insert(chatChannelMembers)
+      .values(insertMember)
+      .returning();
+    return member;
+  }
+
+  async removeChatChannelMember(channelId: number, userId: number): Promise<boolean> {
+    const result = await db
+      .delete(chatChannelMembers)
+      .where(
+        and(
+          eq(chatChannelMembers.channelId, channelId),
+          eq(chatChannelMembers.userId, userId)
+        )
+      );
+    return !!result;
+  }
+
+  async getChatChannelMembers(channelId: number): Promise<User[]> {
+    const memberships = await db
+      .select({
+        userId: chatChannelMembers.userId
+      })
+      .from(chatChannelMembers)
+      .where(eq(chatChannelMembers.channelId, channelId));
+    
+    const userIds = memberships.map(m => m.userId);
+    
+    if (userIds.length === 0) {
+      return [];
+    }
+    
+    return await db.select().from(users).where(
+      sql`${users.id} IN (${userIds.join(',')})`
+    );
+  }
+  
+  // Chat messages operations
+  async getChatMessages(channelId: number): Promise<ChatMessageWithSender[]> {
+    const messages = await db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.channelId, channelId))
+      .orderBy(sql`${chatMessages.sentAt} ASC`);
+    
+    const senderIds = [...new Set(messages.map(m => m.senderId))];
+    
+    if (senderIds.length === 0) {
+      return [];
+    }
+    
+    const senders = await db.select().from(users).where(
+      sql`${users.id} IN (${senderIds.join(',')})`
+    );
+    
+    const senderMap = new Map(senders.map(s => [s.id, s]));
+    
+    return messages.map(message => ({
+      ...message,
+      sender: senderMap.get(message.senderId)!
+    }));
+  }
+
+  async createChatMessage(insertMessage: InsertChatMessage): Promise<ChatMessage> {
+    const [message] = await db
+      .insert(chatMessages)
+      .values(insertMessage)
+      .returning();
+    return message;
+  }
 }
 
 export const storage = new DatabaseStorage();
