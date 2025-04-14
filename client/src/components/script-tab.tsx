@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FilePicker } from "@/components/files-tab";
 import { useScriptData } from "@/hooks/use-script-data";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/lib/auth";
 import { 
   type ScriptCorrelation, 
   type SpreadsheetRow,
