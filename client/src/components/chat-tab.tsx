@@ -159,6 +159,9 @@ export function ChatTab() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Create New Channel</DialogTitle>
+                <DialogDescription>
+                  Create a new chat channel for your team
+                </DialogDescription>
               </DialogHeader>
               <ChatChannelDialog />
             </DialogContent>

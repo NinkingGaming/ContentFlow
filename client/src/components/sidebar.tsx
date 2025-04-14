@@ -6,6 +6,7 @@ import { Project, UserRole } from "@shared/schema";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -155,11 +156,14 @@ export function Sidebar({ projects, isOpen, onToggle, onNewProject }: SidebarPro
       
       {/* Chat Dialog */}
       <Dialog open={isChatDialogOpen} onOpenChange={setIsChatDialogOpen}>
-        <DialogContent className="max-w-md h-[80vh]">
-          <DialogHeader>
+        <DialogContent className="max-w-md h-[80vh] p-0 pt-6">
+          <DialogHeader className="px-6 pb-2">
             <DialogTitle>Team Chat</DialogTitle>
+            <DialogDescription>
+              Chat with your team members in real-time
+            </DialogDescription>
           </DialogHeader>
-          <div className="h-full flex flex-col overflow-hidden">
+          <div className="h-[calc(80vh-80px)] flex flex-col overflow-hidden">
             <ChatTab />
           </div>
         </DialogContent>

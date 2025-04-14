@@ -11,6 +11,10 @@ import {
   scriptData, type ScriptData, type InsertScriptData,
   type ScriptCorrelation, type SpreadsheetRow,
   type ProjectFolderWithParent, type ProjectFileWithFolder,
+  chatChannels, type ChatChannel, type InsertChatChannel,
+  chatChannelMembers, type ChatChannelMember, type InsertChatChannelMember,
+  chatMessages, type ChatMessage, type InsertChatMessage,
+  type ChatMessageWithSender, type ChatChannelWithMembers,
   UserRole
 } from "@shared/schema";
 import { db, pool } from "./db";
