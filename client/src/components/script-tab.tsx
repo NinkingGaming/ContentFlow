@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -10,7 +10,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FilePicker } from "@/components/files-tab";
-import { apiRequest } from "@/lib/queryClient";
+import { useScriptData } from "@/hooks/use-script-data";
+import { 
+  type ScriptCorrelation, 
+  type SpreadsheetRow 
+} from "@shared/schema";
 import {
   Bold,
   Italic,
@@ -32,33 +36,6 @@ import {
   FileVideo
 } from "lucide-react";
 
-// Mock data types - these would be defined in the shared schema in a real implementation
-interface ScriptData {
-  id?: number;
-  projectId: number;
-  content: string;
-  correlations: ScriptCorrelation[];
-  spreadsheetData: SpreadsheetRow[];
-  finalContent: string;
-}
-
-interface ScriptCorrelation {
-  textId: string;
-  shotNumber: number;
-  text: string;
-}
-
-interface SpreadsheetRow {
-  id: number;
-  generalData: string;
-  shotNumber: number;
-  shotData1: string;
-  shotData2: string;
-  shotData3: string;
-  shotData4: string;
-  hasCorrelation: boolean;
-}
-
 export function ScriptTab({ projectId }: { projectId: number }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -78,21 +55,50 @@ export function ScriptTab({ projectId }: { projectId: number }) {
   const microEditorRef = useRef<HTMLTextAreaElement>(null);
   const finalEditorRef = useRef<HTMLDivElement>(null);
   
-  // Mock save function (would use useMutation in real implementation)
+  // Use our new script data hook for persistence
+  const {
+    scriptData,
+    isLoading,
+    updateScriptData,
+    isUpdating
+  } = useScriptData(projectId);
+  
+  // Load script data from the server if available
+  useEffect(() => {
+    if (scriptData) {
+      // Set all the local state from the server data
+      setScriptContent(scriptData.scriptContent);
+      setFinalContent(scriptData.finalContent || "<p>Final formatted content will appear here...</p>");
+      setSpreadsheetData(scriptData.spreadsheetData);
+      setCorrelations(scriptData.correlations);
+      
+      // Update the editor contents
+      if (scriptEditorRef.current) {
+        scriptEditorRef.current.innerHTML = scriptData.scriptContent;
+      }
+      if (finalEditorRef.current) {
+        finalEditorRef.current.innerHTML = scriptData.finalContent || "<p>Final formatted content will appear here...</p>";
+      }
+    }
+  }, [scriptData]);
+  
+  // Debounce timer for user input before saving
   const saveDebounceTimer = useRef<NodeJS.Timeout | null>(null);
   
+  // Function to save data to server
   const saveData = () => {
     if (saveDebounceTimer.current) {
       clearTimeout(saveDebounceTimer.current);
     }
     
     saveDebounceTimer.current = setTimeout(() => {
-      // In a real implementation, this would save to the backend
-      toast({
-        title: "Saved",
-        description: "Your changes have been saved.",
+      updateScriptData({
+        scriptContent,
+        finalContent,
+        correlations,
+        spreadsheetData
       });
-    }, 2000);
+    }, 1000); // 1 second debounce
   };
 
   // Handle text formatting in the rich text editor

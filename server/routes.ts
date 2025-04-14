@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { 
   insertUserSchema, insertProjectSchema, insertColumnSchema, 
   insertContentSchema, insertAttachmentSchema, insertYoutubeVideoSchema,
-  insertProjectFileSchema, insertProjectFolderSchema
+  insertProjectFileSchema, insertProjectFolderSchema, insertScriptDataSchema
 } from "../shared/schema";
 import { z } from "zod";
 import { ZodError } from "zod";
@@ -885,6 +885,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteProjectFolder(folderId);
       res.json({ message: "Folder deleted successfully" });
     } catch (error) {
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+
+  // Script data endpoints
+  app.get("/api/projects/:id/script-data", isAuthenticated, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      
+      // Verify project exists and user has access
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      // Get script data
+      const scriptData = await storage.getScriptData(projectId);
+      if (!scriptData) {
+        return res.status(404).json({ message: "Script data not found" });
+      }
+      
+      res.json(scriptData);
+    } catch (error) {
+      console.error("Error fetching script data:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.post("/api/projects/:id/script-data", isAuthenticated, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const user = req.user as any;
+      
+      // Verify project exists and user has access
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      // Check if script data already exists
+      const existingScriptData = await storage.getScriptData(projectId);
+      if (existingScriptData) {
+        return res.status(400).json({ message: "Script data already exists for this project" });
+      }
+      
+      // Validate and create script data
+      const scriptDataInput = insertScriptDataSchema.parse({
+        ...req.body,
+        projectId,
+        createdBy: user.id
+      });
+      
+      const newScriptData = await storage.createScriptData(scriptDataInput);
+      res.status(201).json(newScriptData);
+    } catch (error) {
+      console.error("Error creating script data:", error);
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: fromZodError(error).message });
+      }
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.put("/api/projects/:id/script-data", isAuthenticated, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const user = req.user as any;
+      
+      // Verify project exists and user has access
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      // Validate update data
+      const updateSchema = insertScriptDataSchema.partial();
+      const updates = updateSchema.parse({
+        ...req.body,
+        createdBy: user.id // Use current user ID for updates if not exists
+      });
+      
+      // Update script data
+      const updatedScriptData = await storage.updateScriptData(projectId, updates);
+      if (!updatedScriptData) {
+        return res.status(404).json({ message: "Failed to update script data" });
+      }
+      
+      res.json(updatedScriptData);
+    } catch (error) {
+      console.error("Error updating script data:", error);
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: fromZodError(error).message });
+      }
       res.status(500).json({ message: "Server error" });
     }
   });
