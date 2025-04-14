@@ -361,12 +361,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           [project.id, "Consideration", "#3B82F6", 1, 1]
         );
         
-        // Added column - Green
-        console.log("Creating Added column with explicit color value: '#10B981'");
+        // Accepted column - Green
+        console.log("Creating Accepted column with explicit color value: '#10B981'");
         await client.query(
           `INSERT INTO columns (project_id, name, color, "order", width)
            VALUES ($1, $2, $3, $4, $5)`,
-          [project.id, "Added", "#10B981", 2, 1]
+          [project.id, "Accepted", "#10B981", 2, 1]
         );
         
         console.log("All default columns created successfully");

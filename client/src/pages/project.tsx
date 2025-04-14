@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/sidebar";
 import { ProjectColumn } from "@/components/project-column";
 import { NewProjectModal } from "@/components/new-project-modal";
 import { AddContentModal } from "@/components/add-content-modal";
+import { EditProjectModal } from "@/components/edit-project-modal";
 import { YoutubeVideosTab } from "@/components/youtube-videos-tab";
 import { FilesTab } from "@/components/files-tab";
 import { WriteTab } from "@/components/write-tab";
@@ -17,6 +18,7 @@ export default function ProjectPage({ id }: { id: string }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [newProjectModalOpen, setNewProjectModalOpen] = useState(false);
   const [addContentModalOpen, setAddContentModalOpen] = useState(false);
+  const [editProjectModalOpen, setEditProjectModalOpen] = useState(false);
   const [selectedColumnId, setSelectedColumnId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState("board");
   
@@ -124,7 +126,10 @@ export default function ProjectPage({ id }: { id: string }) {
                     </div>
                   )}
                 </div>
-                <button className="bg-white hover:bg-neutral-100 text-neutral-700 text-sm py-1 px-3 border border-neutral-300 rounded-md flex items-center">
+                <button 
+                  onClick={() => setEditProjectModalOpen(true)}
+                  className="bg-white hover:bg-neutral-100 text-neutral-700 text-sm py-1 px-3 border border-neutral-300 rounded-md flex items-center"
+                >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                   <span>Edit Project</span>
                 </button>
@@ -242,6 +247,15 @@ export default function ProjectPage({ id }: { id: string }) {
         columns={columns}
         users={users}
       />
+      
+      {project && (
+        <EditProjectModal
+          project={project}
+          users={users}
+          open={editProjectModalOpen}
+          onOpenChange={setEditProjectModalOpen}
+        />
+      )}
     </div>
   );
 }
