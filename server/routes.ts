@@ -306,12 +306,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { name: "Post-Production", color: "#10B981", order: 3 }
       ];
       
+      // First, check the database schema
+      console.log("Creating columns with the following schema:", defaultColumns);
+      
       for (const column of defaultColumns) {
         try {
-          await storage.createColumn({
-            ...column,
-            projectId: project.id
-          });
+          const columnData = {
+            projectId: project.id,
+            name: column.name,
+            color: column.color,
+            order: column.order
+          };
+          
+          console.log("Creating column with data:", columnData);
+          
+          await storage.createColumn(columnData);
         } catch (columnError) {
           console.error("Error creating column:", columnError);
           throw columnError;
