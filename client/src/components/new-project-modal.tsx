@@ -138,7 +138,7 @@ export function NewProjectModal({ isOpen, onClose, users }: NewProjectModalProps
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="goblinTV">goblinTV</SelectItem>
-                <SelectItem value="Compactful">Compactful</SelectItem>
+                <SelectItem value="compactful">Compactful</SelectItem>
               </SelectContent>
             </Select>
           </div>
