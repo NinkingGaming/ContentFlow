@@ -90,6 +90,25 @@ export interface IStorage {
   getScriptData(projectId: number): Promise<ScriptData | undefined>;
   createScriptData(data: InsertScriptData): Promise<ScriptData>;
   updateScriptData(projectId: number, data: Partial<InsertScriptData>): Promise<ScriptData | undefined>;
+  
+  // Chat operations
+  getChatChannel(id: number): Promise<ChatChannel | undefined>;
+  getChatChannelWithMembers(id: number): Promise<ChatChannelWithMembers | undefined>;
+  getChatChannelByUsers(userIds: number[]): Promise<ChatChannel | undefined>;
+  getChatChannels(): Promise<ChatChannel[]>;
+  getChatChannelsByUser(userId: number): Promise<ChatChannel[]>;
+  createChatChannel(channel: InsertChatChannel): Promise<ChatChannel>;
+  updateChatChannel(id: number, channel: Partial<InsertChatChannel>): Promise<ChatChannel | undefined>;
+  deleteChatChannel(id: number): Promise<boolean>;
+  
+  // Chat channel members operations
+  addChatChannelMember(member: InsertChatChannelMember): Promise<ChatChannelMember>;
+  removeChatChannelMember(channelId: number, userId: number): Promise<boolean>;
+  getChatChannelMembers(channelId: number): Promise<User[]>;
+  
+  // Chat messages operations
+  getChatMessages(channelId: number): Promise<ChatMessageWithSender[]>;
+  createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
 }
 
 export type ProjectWithMembers = Project & {

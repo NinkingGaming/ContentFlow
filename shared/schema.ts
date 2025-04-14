@@ -186,6 +186,54 @@ export const insertScriptDataSchema = createInsertSchema(scriptData).omit({
   updatedAt: true,
 });
 
+// Chat Channels
+export const chatChannels = pgTable("chat_channels", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  isPrivate: boolean("is_private").notNull().default(false),
+  isDirectMessage: boolean("is_direct_message").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").notNull().references(() => users.id),
+});
+
+export const insertChatChannelSchema = createInsertSchema(chatChannels).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Chat Channel Members
+export const chatChannelMembers = pgTable("chat_channel_members", {
+  id: serial("id").primaryKey(),
+  channelId: integer("channel_id").notNull().references(() => chatChannels.id),
+  userId: integer("user_id").notNull().references(() => users.id),
+  isAdmin: boolean("is_admin").notNull().default(false),
+  joinedAt: timestamp("joined_at").notNull().defaultNow(),
+}, (table) => {
+  return {
+    userChannelIdx: primaryKey(table.channelId, table.userId),
+  }
+});
+
+export const insertChatChannelMemberSchema = createInsertSchema(chatChannelMembers).omit({
+  id: true,
+  joinedAt: true,
+});
+
+// Chat Messages
+export const chatMessages = pgTable("chat_messages", {
+  id: serial("id").primaryKey(),
+  channelId: integer("channel_id").notNull().references(() => chatChannels.id),
+  senderId: integer("sender_id").notNull().references(() => users.id),
+  content: text("content").notNull(),
+  sentAt: timestamp("sent_at").notNull().defaultNow(),
+});
+
+export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
+  id: true,
+  sentAt: true,
+});
+
 // Export types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -240,6 +288,24 @@ export type ProjectFolderWithParent = ProjectFolder & {
 
 export type ScriptData = typeof scriptData.$inferSelect;
 export type InsertScriptData = z.infer<typeof insertScriptDataSchema>;
+
+export type ChatChannel = typeof chatChannels.$inferSelect;
+export type InsertChatChannel = z.infer<typeof insertChatChannelSchema>;
+
+export type ChatChannelMember = typeof chatChannelMembers.$inferSelect;
+export type InsertChatChannelMember = z.infer<typeof insertChatChannelMemberSchema>;
+
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
+
+// Custom chat types
+export type ChatChannelWithMembers = ChatChannel & {
+  members: User[];
+};
+
+export type ChatMessageWithSender = ChatMessage & {
+  sender: User;
+};
 
 // Custom script data types
 export interface ScriptCorrelation {
