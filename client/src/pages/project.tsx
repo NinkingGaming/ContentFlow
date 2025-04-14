@@ -9,6 +9,7 @@ import { EditProjectModal } from "@/components/edit-project-modal";
 import { YoutubeVideosTab } from "@/components/youtube-videos-tab";
 import { FilesTab } from "@/components/files-tab";
 import { WriteTab } from "@/components/write-tab";
+import { CalendarView } from "@/components/calendar";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { useAuth } from "@/lib/auth";
@@ -217,9 +218,7 @@ export default function ProjectPage({ id }: { id: string }) {
             )}
             
             {activeTab === "calendar" && (
-              <div className="flex items-center justify-center h-64">
-                <p className="text-neutral-500">Calendar view coming soon</p>
-              </div>
+              <CalendarView projectId={projectId} />
             )}
             
             {activeTab === "files" && (
