@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { pool } from "./db";
 import { 
   insertUserSchema, insertProjectSchema, insertColumnSchema, 
   insertContentSchema, insertAttachmentSchema, insertYoutubeVideoSchema,
@@ -290,94 +291,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("Validated project data:", projectData);
       
-      const project = await storage.createProject(projectData);
-      console.log("Project created successfully:", project);
+      // Get database client for transaction
+      const client = await pool.connect();
       
-      // Add all admin users to project
       try {
-        const adminUsers = await storage.getUsers().then(users => 
-          users.filter(u => u.role === 'admin')
+        // Start transaction
+        await client.query('BEGIN');
+        
+        // Create project directly with SQL
+        const projectResult = await client.query(
+          `INSERT INTO projects (name, description, type, created_by, created_at)
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING id, name, description, type, created_by AS "createdBy", created_at AS "createdAt"`,
+          [projectData.name, projectData.description, projectData.type, user.id, new Date()]
         );
         
-        console.log(`Found ${adminUsers.length} admin users to add to project ${project.id}`);
+        const project = projectResult.rows[0];
+        console.log("Project created successfully:", project);
         
-        for (const admin of adminUsers) {
-          await storage.addProjectMember({
-            projectId: project.id,
-            userId: admin.id
-          });
+        // Add admin users to project
+        const adminUsersResult = await client.query(
+          `SELECT id, username, display_name, email, avatar_initials, avatar_color, role
+           FROM users 
+           WHERE role = 'admin'`
+        );
+        
+        console.log(`Found ${adminUsersResult.rowCount} admin users to add to project ${project.id}`);
+        
+        for (const admin of adminUsersResult.rows) {
+          await client.query(
+            `INSERT INTO project_members (project_id, user_id)
+             VALUES ($1, $2)
+             ON CONFLICT DO NOTHING`,
+            [project.id, admin.id]
+          );
         }
-      } catch (adminError) {
-        console.error("Error adding admin users to project:", adminError);
-        // Continue even if adding admins fails
-      }
-      
-      // Add members if provided
-      if (req.body.memberIds && Array.isArray(req.body.memberIds)) {
-        for (const memberId of req.body.memberIds) {
-          await storage.addProjectMember({
-            projectId: project.id,
-            userId: memberId
-          });
+        
+        // Add members if provided
+        if (req.body.memberIds && Array.isArray(req.body.memberIds)) {
+          for (const memberId of req.body.memberIds) {
+            await client.query(
+              `INSERT INTO project_members (project_id, user_id)
+               VALUES ($1, $2)
+               ON CONFLICT DO NOTHING`,
+              [project.id, memberId]
+            );
+          }
         }
-      }
-      
-      // Create default columns
-      try {
+        
+        // Create default columns directly with SQL
         console.log("Creating default columns for project:", project.id);
-        console.log("Creating Ideation column with color #EAB308");
         
-        // Debug column creation
-        const column1 = {
-          projectId: project.id,
-          name: "Ideation",
-          color: "#EAB308",
-          order: 0
-        };
-        console.log("Column data to be created:", JSON.stringify(column1));
-        const ideationColumn = await storage.createColumn(column1);
-        console.log("Ideation column created:", JSON.stringify(ideationColumn));
+        // Ideation column
+        console.log("Creating Ideation column with explicit color value: '#EAB308'");
+        await client.query(
+          `INSERT INTO columns (project_id, name, color, "order")
+           VALUES ($1, $2, $3, $4)`,
+          [project.id, "Ideation", "#EAB308", 0]
+        );
         
-        console.log("Creating Pre-Production column with color #3B82F6");
-        const column2 = {
-          projectId: project.id,
-          name: "Pre-Production",
-          color: "#3B82F6",
-          order: 1
-        };
-        console.log("Column data to be created:", JSON.stringify(column2));
-        const preProductionColumn = await storage.createColumn(column2);
-        console.log("Pre-Production column created:", JSON.stringify(preProductionColumn));
+        // Pre-Production column
+        console.log("Creating Pre-Production column with explicit color value: '#3B82F6'");
+        await client.query(
+          `INSERT INTO columns (project_id, name, color, "order")
+           VALUES ($1, $2, $3, $4)`,
+          [project.id, "Pre-Production", "#3B82F6", 1]
+        );
         
-        console.log("Creating Production column with color #8B5CF6");
-        const column3 = {
-          projectId: project.id,
-          name: "Production", 
-          color: "#8B5CF6",
-          order: 2
-        };
-        console.log("Column data to be created:", JSON.stringify(column3));
-        const productionColumn = await storage.createColumn(column3);
-        console.log("Production column created:", JSON.stringify(productionColumn));
+        // Production column
+        console.log("Creating Production column with explicit color value: '#8B5CF6'");
+        await client.query(
+          `INSERT INTO columns (project_id, name, color, "order")
+           VALUES ($1, $2, $3, $4)`,
+          [project.id, "Production", "#8B5CF6", 2]
+        );
         
-        console.log("Creating Post-Production column with color #10B981");
-        const column4 = {
-          projectId: project.id,
-          name: "Post-Production",
-          color: "#10B981",
-          order: 3
-        };
-        console.log("Column data to be created:", JSON.stringify(column4));
-        const postProductionColumn = await storage.createColumn(column4);
-        console.log("Post-Production column created:", JSON.stringify(postProductionColumn));
+        // Post-Production column
+        console.log("Creating Post-Production column with explicit color value: '#10B981'");
+        await client.query(
+          `INSERT INTO columns (project_id, name, color, "order")
+           VALUES ($1, $2, $3, $4)`,
+          [project.id, "Post-Production", "#10B981", 3]
+        );
         
         console.log("All default columns created successfully");
-      } catch (columnError) {
-        console.error("Error creating columns:", columnError);
-        throw columnError;
+        
+        // Commit the transaction
+        await client.query('COMMIT');
+        
+        res.status(201).json(project);
+        return; // Early return to avoid the second response
+      } catch (error) {
+        await client.query('ROLLBACK');
+        console.error("Transaction error in project creation:", error);
+        throw error;
+      } finally {
+        client.release();
       }
-      
-      res.status(201).json(project);
     } catch (error) {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: error.message });
@@ -619,15 +629,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get current contents count to determine order
       const contents = await storage.getContentByColumn(contentData.columnId);
+      const orderValue = contents.length;
       
-      // Create content with additional order field
-      const content = await storage.createContent({
-        ...contentData,
-        order: contents.length  // Set the order directly in the database insert
-      });
-      
-      console.log("Content created successfully:", content);
-      res.status(201).json(content);
+      // Use direct SQL to ensure proper handling of all fields
+      const client = await pool.connect();
+      try {
+        // Start transaction
+        await client.query('BEGIN');
+        
+        // Insert content with direct SQL
+        console.log(`Creating content with SQL: title=${contentData.title}, columnId=${contentData.columnId}, order=${orderValue}`);
+        
+        const contentResult = await client.query(
+          `INSERT INTO contents (
+             title, description, type, project_id, column_id, 
+             created_by, assigned_to, priority, progress, "order", 
+             due_date, created_at
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+           RETURNING 
+             id, title, description, type, project_id AS "projectId", 
+             column_id AS "columnId", created_by AS "createdBy", 
+             assigned_to AS "assignedTo", priority, progress, "order", 
+             due_date AS "dueDate", created_at AS "createdAt"`,
+          [
+            contentData.title,
+            contentData.description || null,
+            contentData.type || 'task',
+            contentData.projectId,
+            contentData.columnId,
+            contentData.createdBy,
+            contentData.assignedTo || null,
+            contentData.priority || null,
+            contentData.progress || null,
+            orderValue,
+            contentData.dueDate || null,
+            new Date()
+          ]
+        );
+        
+        // Commit transaction
+        await client.query('COMMIT');
+        
+        const content = contentResult.rows[0];
+        console.log("Content created successfully:", content);
+        res.status(201).json(content);
+      } catch (error) {
+        await client.query('ROLLBACK');
+        console.error("Transaction error in content creation:", error);
+        throw error;
+      } finally {
+        client.release();
+      }
     } catch (error) {
       console.error("Error creating content:", error);
       if (error instanceof ZodError) {
