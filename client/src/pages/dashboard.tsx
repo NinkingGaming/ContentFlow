@@ -62,13 +62,13 @@ export default function Dashboard() {
                 className="mt-4 md:mt-0 bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-md flex items-center justify-center transition"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                <span>New Project</span>
+                <span>New Channel</span>
               </button>
             </div>
             
             <Tabs defaultValue="projects" className="mb-6">
               <TabsList className="mb-4">
-                <TabsTrigger value="projects">Projects</TabsTrigger>
+                <TabsTrigger value="projects">Channels</TabsTrigger>
                 {/* Only show Team tab for admins and producers */}
                 {user?.role === UserRole.ADMIN || user?.role === UserRole.PRODUCER ? (
                   <TabsTrigger value="team">Team</TabsTrigger>
@@ -95,15 +95,15 @@ export default function Dashboard() {
                             <CardContent className="p-6 flex flex-col h-full">
                               <div className="flex-1">
                                 <div className="flex items-center mb-4">
-                                  {project.type.includes("YouTube") ? (
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>
+                                  {project.type === "goblinTV" ? (
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>
                                   ) : (
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
                                   )}
                                   <h3 className="text-lg font-semibold text-neutral-900">{project.name}</h3>
                                 </div>
                                 <p className="text-sm text-neutral-600 mb-4">{project.description}</p>
-                                <div className="text-xs text-neutral-500">{project.type}</div>
+                                <div className="text-xs text-neutral-500">Channel: {project.type}</div>
                               </div>
                               <div className="flex items-center justify-between mt-4 pt-4 border-t border-neutral-200">
                                 <div className="flex -space-x-2">
@@ -136,14 +136,14 @@ export default function Dashboard() {
                       <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mb-4 text-neutral-400">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.48-8.48l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
                       </div>
-                      <h3 className="text-lg font-medium text-neutral-800 mb-2">No projects yet</h3>
-                      <p className="text-neutral-500 max-w-md mb-6">Create your first project to start organizing your content for YouTube videos or video pitches.</p>
+                      <h3 className="text-lg font-medium text-neutral-800 mb-2">No channels yet</h3>
+                      <p className="text-neutral-500 max-w-md mb-6">Create your first channel to start organizing your content for goblinTV or Compactful.</p>
                       <button 
                         onClick={openNewProjectModal}
                         className="bg-primary hover:bg-primary/90 text-white py-2 px-4 rounded-md flex items-center justify-center transition"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                        <span>Create Your First Project</span>
+                        <span>Create Your First Channel</span>
                       </button>
                     </div>
                   )}

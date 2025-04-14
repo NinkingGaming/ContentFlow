@@ -21,7 +21,7 @@ interface NewProjectModalProps {
 
 export function NewProjectModal({ isOpen, onClose, users }: NewProjectModalProps) {
   const [name, setName] = useState("");
-  const [type, setType] = useState("YouTube Series");
+  const [type, setType] = useState("goblinTV");
   const [description, setDescription] = useState("");
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
   const [newMemberInput, setNewMemberInput] = useState("");
@@ -33,7 +33,7 @@ export function NewProjectModal({ isOpen, onClose, users }: NewProjectModalProps
   
   const resetForm = () => {
     setName("");
-    setType("YouTube Series");
+    setType("goblinTV");
     setDescription("");
     setSelectedUsers([]);
     setNewMemberInput("");
@@ -131,17 +131,14 @@ export function NewProjectModal({ isOpen, onClose, users }: NewProjectModalProps
             />
           </div>
           <div className="mb-4">
-            <Label htmlFor="type" className="block text-sm font-medium text-neutral-700 mb-1">Project Type</Label>
+            <Label htmlFor="type" className="block text-sm font-medium text-neutral-700 mb-1">Channel</Label>
             <Select value={type} onValueChange={setType}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select project type" />
+                <SelectValue placeholder="Select channel" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="YouTube Series">YouTube Series</SelectItem>
-                <SelectItem value="Video Pitch">Video Pitch</SelectItem>
-                <SelectItem value="Interview Series">Interview Series</SelectItem>
-                <SelectItem value="Tutorial Series">Tutorial Series</SelectItem>
-                <SelectItem value="Other">Other</SelectItem>
+                <SelectItem value="goblinTV">goblinTV</SelectItem>
+                <SelectItem value="Compactful">Compactful</SelectItem>
               </SelectContent>
             </Select>
           </div>
