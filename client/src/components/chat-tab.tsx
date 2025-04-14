@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 
 // Main Chat Tab Component
 export function ChatTab() {
@@ -429,13 +430,32 @@ function getDMPartnerColor(channel: ChatChannel, currentUserId?: number): string
 // New DM button component
 function NewDirectMessageButton({ users }: { users: any[] }) {
   const { createOrGetDirectMessageChannel, setCurrentChannel } = useChat();
+  const { user: currentUser } = useAuth();
+  const { toast } = useToast();
+  
+  // Filter out the current user from the list
+  const filteredUsers = users.filter(user => user.id !== currentUser?.id);
   
   const handleStartDM = async (userId: number) => {
     try {
+      if (userId === currentUser?.id) {
+        toast({
+          title: "Error",
+          description: "You cannot create a direct message with yourself",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       const channel = await createOrGetDirectMessageChannel(userId);
       setCurrentChannel(channel);
     } catch (error) {
       console.error("Error creating DM channel:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create direct message channel",
+        variant: "destructive"
+      });
     }
   };
   
@@ -450,17 +470,20 @@ function NewDirectMessageButton({ users }: { users: any[] }) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>New Direct Message</DialogTitle>
+          <DialogDescription>
+            Select a user to start a private conversation
+          </DialogDescription>
         </DialogHeader>
         <div className="mt-4 space-y-4">
           <div className="space-y-2">
             <Label>Select a user to message</Label>
             <div className="max-h-[300px] overflow-y-auto space-y-1 border rounded-md p-2">
-              {users.length === 0 ? (
+              {filteredUsers.length === 0 ? (
                 <div className="text-center py-3 text-neutral-500 text-sm">
                   No users available
                 </div>
               ) : (
-                users.map(user => (
+                filteredUsers.map(user => (
                   <div 
                     key={user.id}
                     className="flex items-center p-2 rounded-md hover:bg-neutral-50 cursor-pointer"
