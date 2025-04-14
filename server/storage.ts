@@ -172,6 +172,11 @@ export class DatabaseStorage implements IStorage {
         UPDATE contents SET assigned_to = NULL WHERE assigned_to = $1
       `, [id]);
       
+      // Fix script data references
+      await client.query(`
+        UPDATE script_data SET created_by = 6 WHERE created_by = $1
+      `, [id]);
+      
       // Find projects created by this user
       const userProjects = await client.query(`
         SELECT id FROM projects WHERE created_by = $1
