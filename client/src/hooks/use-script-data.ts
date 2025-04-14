@@ -30,10 +30,7 @@ export function useScriptData(projectId: number) {
   // Create script data mutation
   const createScriptData = useMutation({
     mutationFn: (data: ScriptDataPayload) => {
-      return apiRequest(queryKey[0], {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("POST", queryKey[0], data).then(res => res.json());
     },
     onSuccess: (data) => {
       // Set the data directly instead of invalidating the query
@@ -56,10 +53,7 @@ export function useScriptData(projectId: number) {
   // Update script data mutation
   const updateScriptData = useMutation({
     mutationFn: (data: Partial<ScriptDataPayload>) => {
-      return apiRequest(queryKey[0], {
-        method: "PUT",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("PUT", queryKey[0], data).then(res => res.json());
     },
     onSuccess: (data) => {
       // Set the query data manually instead of invalidating the query

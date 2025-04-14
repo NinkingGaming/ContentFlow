@@ -395,9 +395,7 @@ export function FilesTab({ projectId }: { projectId: number }) {
   // Mutation to delete a file
   const deleteFileMutation = useMutation({
     mutationFn: (fileId: number) => 
-      apiRequest(`/api/files/${fileId}`, {
-        method: 'DELETE'
-      }),
+      apiRequest('DELETE', `/api/files/${fileId}`),
     onSuccess: () => {
       toast({
         title: 'File deleted',
@@ -419,9 +417,7 @@ export function FilesTab({ projectId }: { projectId: number }) {
   // Mutation to delete a folder
   const deleteFolderMutation = useMutation({
     mutationFn: (folderId: number) => 
-      apiRequest(`/api/folders/${folderId}`, {
-        method: 'DELETE'
-      }),
+      apiRequest('DELETE', `/api/folders/${folderId}`),
     onSuccess: () => {
       toast({
         title: 'Folder deleted',
