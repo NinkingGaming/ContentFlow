@@ -95,10 +95,7 @@ export function AddContentModal({
         priority
       };
       
-      await apiRequest("/api/contents", {
-        method: "POST",
-        body: JSON.stringify(contentData)
-      });
+      const response = await apiRequest("POST", "/api/contents", contentData);
       
       // Invalidate columns query to refresh the board
       await queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/columns`] });

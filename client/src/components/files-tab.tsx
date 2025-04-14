@@ -35,7 +35,7 @@ function FileBrowser({
       const endpoint = currentFolderId === null
         ? `/api/projects/${projectId}/folders/root`
         : `/api/projects/${projectId}/folders/${currentFolderId}`;
-      return apiRequest(endpoint);
+      return apiRequest("GET", endpoint).then(res => res.json());
     },
   });
 
@@ -186,10 +186,7 @@ function FileUploadDialog({ projectId, folderId, isOpen, onClose }: FileUploadDi
           folderId,
         };
         
-        await apiRequest('/api/files', {
-          method: 'POST',
-          body: JSON.stringify(fileData)
-        });
+        await apiRequest('POST', '/api/files', fileData);
       }
       
       toast({
@@ -287,10 +284,7 @@ function NewFolderDialog({ projectId, parentId, isOpen, onClose }: NewFolderDial
         parentId,
       };
       
-      await apiRequest('/api/folders', {
-        method: 'POST',
-        body: JSON.stringify(folderData)
-      });
+      await apiRequest('POST', '/api/folders', folderData);
       
       toast({
         title: 'Folder created',
