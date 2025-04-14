@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -14,7 +14,14 @@ import { PasswordGateway } from "@/components/password-gateway";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
+  const [, navigate] = useLocation();
+  
+  // Use useEffect to handle navigation after render
+  useEffect(() => {
+    if (!isLoading && !user) {
+      navigate("/login");
+    }
+  }, [user, isLoading, navigate]);
 
   if (isLoading) {
     return (
@@ -25,7 +32,6 @@ function PrivateRoute({ component: Component, ...rest }: any) {
   }
 
   if (!user) {
-    setLocation("/login");
     return null;
   }
 
