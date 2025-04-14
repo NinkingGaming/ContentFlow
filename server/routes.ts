@@ -131,6 +131,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Check if user has admin role
+  const isAdmin = (req: Request, res: Response, next: Function) => {
+    const user = req.user as any;
+    if (user && user.role === 'admin') {
+      return next();
+    }
+    res.status(403).json({ message: "Forbidden: Admin access required" });
+  };
+  
+  // Update user role (admin only)
+  app.patch("/api/users/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const currentUser = req.user as any;
+      
+      // Don't allow admins to change their own role (prevent lockout)
+      if (userId === currentUser.id) {
+        return res.status(400).json({ message: "Cannot change your own role" });
+      }
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const schema = z.object({
+        role: z.enum(['admin', 'producer', 'actor', 'employed'])
+      });
+      
+      const { role } = schema.parse(req.body);
+      
+      // Update the user role
+      const updatedUser = await storage.updateUser(userId, { role });
+      
+      // Remove password from response
+      const { password, ...userWithoutPassword } = updatedUser;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: error.message });
+      }
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  // Add new user (admin only)
+  app.post("/api/users", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const userData = insertUserSchema.parse(req.body);
+      
+      // Check if username or email already exists
+      const existingUsername = await storage.getUserByUsername(userData.username);
+      if (existingUsername) {
+        return res.status(400).json({ message: "Username already exists" });
+      }
+      
+      const existingEmail = await storage.getUserByEmail(userData.email);
+      if (existingEmail) {
+        return res.status(400).json({ message: "Email already exists" });
+      }
+      
+      const user = await storage.createUser(userData);
+      
+      // Remove password from response
+      const { password, ...userWithoutPassword } = user;
+      res.status(201).json(userWithoutPassword);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: error.message });
+      }
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
   // Project endpoints
   app.get("/api/projects", isAuthenticated, async (req, res) => {
     try {
