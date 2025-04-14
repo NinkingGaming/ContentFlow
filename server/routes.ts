@@ -1208,6 +1208,132 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== Published Finals API ==========
+  
+  // Get all published finals for a project
+  app.get("/api/projects/:id/published-finals", isAuthenticated, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      
+      // Verify project exists and user has access
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      // Get published finals
+      const finals = await storage.getPublishedFinals(projectId);
+      
+      // For each final, get the user who published it
+      const finalsWithUser = await Promise.all(finals.map(async (final) => {
+        const user = await storage.getUser(final.publishedBy);
+        return {
+          ...final,
+          publisher: user ? {
+            id: user.id,
+            displayName: user.displayName,
+            avatarInitials: user.avatarInitials,
+            avatarColor: user.avatarColor
+          } : null
+        };
+      }));
+      
+      res.json(finalsWithUser);
+    } catch (error) {
+      console.error("Error fetching published finals:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  // Get a specific published final
+  app.get("/api/published-finals/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      // Get published final
+      const final = await storage.getPublishedFinal(id);
+      if (!final) {
+        return res.status(404).json({ message: "Published final not found" });
+      }
+      
+      // Verify project exists and user has access
+      const project = await storage.getProject(final.projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      // Get the user who published it
+      const user = await storage.getUser(final.publishedBy);
+      
+      res.json({
+        ...final,
+        publisher: user ? {
+          id: user.id,
+          displayName: user.displayName,
+          avatarInitials: user.avatarInitials,
+          avatarColor: user.avatarColor
+        } : null
+      });
+    } catch (error) {
+      console.error("Error fetching published final:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  // Create a new published final
+  app.post("/api/projects/:id/published-finals", isAuthenticated, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const user = req.user as any;
+      
+      // Verify project exists and user has access
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      // Get current script data
+      const scriptData = await storage.getScriptData(projectId);
+      if (!scriptData || !scriptData.finalContent) {
+        return res.status(400).json({ message: "No final content available to publish" });
+      }
+      
+      // Get the latest version number for this project
+      const existingFinals = await storage.getPublishedFinals(projectId);
+      const currentVersion = existingFinals.length > 0 
+        ? Math.max(...existingFinals.map(f => f.version)) 
+        : 0;
+      
+      // Create new published final
+      const newFinal = await storage.createPublishedFinal({
+        projectId,
+        title: req.body.title || `Version ${currentVersion + 1}`,
+        content: scriptData.finalContent,
+        version: currentVersion + 1,
+        publishedBy: user.id
+      });
+      
+      // Get the user who published it
+      const publisher = await storage.getUser(user.id);
+      
+      res.status(201).json({
+        ...newFinal,
+        publisher: publisher ? {
+          id: publisher.id,
+          displayName: publisher.displayName,
+          avatarInitials: publisher.avatarInitials,
+          avatarColor: publisher.avatarColor
+        } : null
+      });
+    } catch (error) {
+      console.error("Error creating published final:", error);
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: fromZodError(error).message });
+      }
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+
   // ========== Chat Channel API ==========
   
   // Get all chat channels for current user

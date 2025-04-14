@@ -15,6 +15,7 @@ import {
   chatChannelMembers, type ChatChannelMember, type InsertChatChannelMember,
   chatMessages, type ChatMessage, type InsertChatMessage,
   type ChatMessageWithSender, type ChatChannelWithMembers,
+  publishedFinals, type PublishedFinal, type InsertPublishedFinal,
   UserRole
 } from "@shared/schema";
 import { db, pool } from "./db";
@@ -94,6 +95,11 @@ export interface IStorage {
   getScriptData(projectId: number): Promise<ScriptData | undefined>;
   createScriptData(data: InsertScriptData): Promise<ScriptData>;
   updateScriptData(projectId: number, data: Partial<InsertScriptData>): Promise<ScriptData | undefined>;
+  
+  // Published finals operations
+  getPublishedFinal(id: number): Promise<PublishedFinal | undefined>;
+  getPublishedFinals(projectId: number): Promise<PublishedFinal[]>;
+  createPublishedFinal(data: InsertPublishedFinal): Promise<PublishedFinal>;
   
   // Chat operations
   getChatChannel(id: number): Promise<ChatChannel | undefined>;
@@ -1043,6 +1049,31 @@ export class DatabaseStorage implements IStorage {
         createdBy: updates.createdBy
       });
     }
+  }
+  
+  // Published finals operations
+  async getPublishedFinal(id: number): Promise<PublishedFinal | undefined> {
+    const [final] = await db
+      .select()
+      .from(publishedFinals)
+      .where(eq(publishedFinals.id, id));
+    return final;
+  }
+  
+  async getPublishedFinals(projectId: number): Promise<PublishedFinal[]> {
+    return await db
+      .select()
+      .from(publishedFinals)
+      .where(eq(publishedFinals.projectId, projectId))
+      .orderBy(publishedFinals.publishedAt);
+  }
+  
+  async createPublishedFinal(insertFinal: InsertPublishedFinal): Promise<PublishedFinal> {
+    const [final] = await db
+      .insert(publishedFinals)
+      .values(insertFinal)
+      .returning();
+    return final;
   }
 
   // Chat operations
