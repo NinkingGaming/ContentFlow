@@ -345,36 +345,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Create default columns directly with SQL
         console.log("Creating default columns for project:", project.id);
         
-        // Ideation column
-        console.log("Creating Ideation column with explicit color value: '#EAB308'");
+        // Pitches column - Orange (2 columns wide)
+        console.log("Creating Pitches column with explicit color value: '#F97316'");
         await client.query(
-          `INSERT INTO columns (project_id, name, color, "order")
-           VALUES ($1, $2, $3, $4)`,
-          [project.id, "Ideation", "#EAB308", 0]
+          `INSERT INTO columns (project_id, name, color, "order", width)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [project.id, "Pitches", "#F97316", 0, 2]
         );
         
-        // Pre-Production column
-        console.log("Creating Pre-Production column with explicit color value: '#3B82F6'");
+        // Consideration column - Blue 
+        console.log("Creating Consideration column with explicit color value: '#3B82F6'");
         await client.query(
-          `INSERT INTO columns (project_id, name, color, "order")
-           VALUES ($1, $2, $3, $4)`,
-          [project.id, "Pre-Production", "#3B82F6", 1]
+          `INSERT INTO columns (project_id, name, color, "order", width)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [project.id, "Consideration", "#3B82F6", 1, 1]
         );
         
-        // Production column
-        console.log("Creating Production column with explicit color value: '#8B5CF6'");
+        // Added column - Green
+        console.log("Creating Added column with explicit color value: '#10B981'");
         await client.query(
-          `INSERT INTO columns (project_id, name, color, "order")
-           VALUES ($1, $2, $3, $4)`,
-          [project.id, "Production", "#8B5CF6", 2]
-        );
-        
-        // Post-Production column
-        console.log("Creating Post-Production column with explicit color value: '#10B981'");
-        await client.query(
-          `INSERT INTO columns (project_id, name, color, "order")
-           VALUES ($1, $2, $3, $4)`,
-          [project.id, "Post-Production", "#10B981", 3]
+          `INSERT INTO columns (project_id, name, color, "order", width)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [project.id, "Added", "#10B981", 2, 1]
         );
         
         console.log("All default columns created successfully");

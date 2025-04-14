@@ -46,10 +46,17 @@ export function ProjectColumn({ column, onAddContent }: ProjectColumnProps) {
     }
   };
   
+  // Calculate column width - if width property exists, use it, otherwise default to 1
+  const columnWidth = column.width || 1;
+  
   return (
     <div 
       ref={drop}
-      className={`flex-1 flex flex-col bg-white rounded-md shadow-sm border ${isOver ? 'border-primary border-dashed' : 'border-neutral-200'} min-w-[280px] max-w-[340px]`}
+      className={`flex-1 flex flex-col bg-white rounded-md shadow-sm border ${isOver ? 'border-primary border-dashed' : 'border-neutral-200'} min-w-[280px]`}
+      style={{ 
+        flexGrow: columnWidth, 
+        maxWidth: `${columnWidth * 340}px` 
+      }}
     >
       <div className="p-3 border-b border-neutral-200 flex items-center justify-between">
         <div className="flex items-center">

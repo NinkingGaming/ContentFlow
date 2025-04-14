@@ -65,6 +65,7 @@ export const columns = pgTable("columns", {
   name: text("name").notNull(),
   color: text("color").notNull(),
   order: integer("order").notNull(),
+  width: integer("width").default(1), // Default width is 1, Pitches column will be 2
 });
 
 export const insertColumnSchema = createInsertSchema(columns).omit({
