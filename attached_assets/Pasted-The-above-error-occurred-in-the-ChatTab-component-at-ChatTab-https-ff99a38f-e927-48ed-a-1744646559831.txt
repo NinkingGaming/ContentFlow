@@ -1,0 +1,38 @@
+The above error occurred in the <ChatTab> component:
+
+    at ChatTab (https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/src/components/chat-tab.tsx?t=1744646446317:48:20)
+    at div
+    at div
+    at https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-CPFL7ZFD.js?v=3603c8bb:41:13
+    at https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-DPXLZWVB.js?v=3603c8bb:61:7
+    at https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-DKHUMOWT.js?v=3603c8bb:52:11
+    at https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-DKHUMOWT.js?v=3603c8bb:33:11
+    at https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-CPFL7ZFD.js?v=3603c8bb:41:13
+    at https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-FVMGL6KI.js?v=3603c8bb:57:5
+    at https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-NMPC2FAQ.js?v=3603c8bb:232:13
+    at https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-NMPC2FAQ.js?v=3603c8bb:155:58
+    at Presence (https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-AZCBCMZO.js?v=3603c8bb:24:11)
+    at https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-NMPC2FAQ.js?v=3603c8bb:146:64
+    at https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-DKHUMOWT.js?v=3603c8bb:52:11
+    at https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-DKHUMOWT.js?v=3603c8bb:33:11
+    at https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-CPFL7ZFD.js?v=3603c8bb:41:13
+    at https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-DPXLZWVB.js?v=3603c8bb:260:22
+    at Presence (https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-AZCBCMZO.js?v=3603c8bb:24:11)
+    at Provider (https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-LSQNWB54.js?v=3603c8bb:38:15)
+    at DialogPortal (https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-NMPC2FAQ.js?v=3603c8bb:109:11)
+    at _c3 (https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/src/components/ui/dialog.tsx:51:12)
+    at Provider (https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-LSQNWB54.js?v=3603c8bb:38:15)
+    at Dialog (https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-NMPC2FAQ.js?v=3603c8bb:50:5)
+    at Sidebar (https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/src/components/sidebar.tsx?t=1744646446317:31:27)
+    at div
+    at div
+    at Dashboard (https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/src/pages/dashboard.tsx?t=1744646446317:29:41)
+    at PrivateRoute (https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/src/App.tsx?t=1744646446317&v=fKVD1ZW7aMRuyUJctUdxZ:31:36)
+    at Route (https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=3603c8bb:323:16)
+    at Switch (https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=3603c8bb:379:17)
+    at Router
+    at AuthProvider (https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/src/lib/AuthProvider.tsx:21:32)
+    at QueryClientProvider (https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=3603c8bb:2805:3)
+    at App (https://ff99a38f-e927-48ed-a429-c7b8b4ddabbb-00-3c28tql88qh7v.worf.replit.dev/src/App.tsx?t=1744646446317&v=fKVD1ZW7aMRuyUJctUdxZ:108:37)
+    at ChatProvider…
+useChat must be used within a ChatProvider

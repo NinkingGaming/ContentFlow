@@ -11,6 +11,7 @@ import Project from "@/pages/project";
 import { AuthProvider } from "./lib/auth";
 import { useAuth } from "./lib/auth";
 import { PasswordGateway } from "@/components/password-gateway";
+import { ChatProvider } from "./hooks/use-chat";
 
 function PrivateRoute({ component: Component, ...rest }: any) {
   const { user, isLoading } = useAuth();
@@ -71,8 +72,10 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router />
-        <Toaster />
+        <ChatProvider>
+          <Router />
+          <Toaster />
+        </ChatProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
