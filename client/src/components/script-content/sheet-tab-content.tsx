@@ -48,7 +48,7 @@ export function SheetTabContent({ projectId }: { projectId: number }) {
         spreadsheetData,
         scriptContent: scriptData?.scriptContent || "<p>Enter your script here...</p>",
         finalContent: scriptData?.finalContent || "<p>Final formatted content will appear here...</p>",
-        correlations: scriptData?.correlations || [] as ScriptCorrelation[]
+        correlations: Array.isArray(scriptData?.correlations) ? scriptData.correlations : []
       });
     }, 1000); // 1 second debounce
   };
