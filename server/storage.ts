@@ -19,7 +19,7 @@ import {
   UserRole
 } from "@shared/schema";
 import { db, pool } from "./db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, inArray } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -525,20 +525,49 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getProjectMembers(projectId: number): Promise<User[]> {
-    const memberships = await db
-      .select()
-      .from(projectMembers)
-      .where(eq(projectMembers.projectId, projectId));
-    
-    if (memberships.length === 0) {
+    try {
+      console.log(`Getting project members for projectId: ${projectId}`);
+      
+      // Use the raw SQL approach with the client/pool for better diagnostics
+      const client = await pool.connect();
+      
+      try {
+        // Get all member IDs
+        const membershipResult = await client.query(
+          `SELECT user_id FROM project_members WHERE project_id = $1`,
+          [projectId]
+        );
+        
+        console.log(`Found ${membershipResult.rowCount} memberships for project ${projectId}`);
+        
+        if (membershipResult.rowCount === 0) {
+          return [];
+        }
+        
+        // Extract the user IDs
+        const userIds = membershipResult.rows.map(row => row.user_id);
+        console.log(`User IDs in project ${projectId}: ${userIds.join(', ')}`);
+        
+        // Get the users
+        const userResult = await client.query(
+          `SELECT id, username, display_name AS "displayName", email, avatar_initials AS "avatarInitials", 
+                  avatar_color AS "avatarColor", role 
+           FROM users 
+           WHERE id = ANY($1)`,
+          [userIds]
+        );
+        
+        console.log(`Found ${userResult.rowCount} users for project ${projectId}`);
+        
+        return userResult.rows;
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      console.error(`Error getting project members for projectId ${projectId}:`, error);
+      // Return empty array in case of error
       return [];
     }
-    
-    const userIds = memberships.map(m => m.userId);
-    if (userIds.length === 0) return [];
-    return await db.select().from(users).where(
-      sql`${users.id} IN (${userIds.join(',')})`
-    );
   }
 
   // Column operations

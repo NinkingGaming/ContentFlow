@@ -270,14 +270,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/projects/:id", isAuthenticated, async (req, res) => {
     try {
       const projectId = parseInt(req.params.id);
-      const project = await storage.getProjectWithMembers(projectId);
+      console.log(`Getting project with members for ID: ${projectId}`);
       
-      if (!project) {
+      // First try to get the base project
+      const baseProject = await storage.getProject(projectId);
+      if (!baseProject) {
+        console.log(`Project with ID ${projectId} not found`);
         return res.status(404).json({ message: "Project not found" });
       }
       
-      res.json(project);
+      console.log(`Found base project: ${JSON.stringify(baseProject)}`);
+      
+      try {
+        // Then try to get the members
+        const members = await storage.getProjectMembers(projectId);
+        console.log(`Found ${members.length} members for project ${projectId}`);
+        
+        // Combine the project with its members
+        const projectWithMembers = { ...baseProject, members };
+        res.json(projectWithMembers);
+      } catch (membersError) {
+        console.error(`Error getting members for project ${projectId}:`, membersError);
+        // Return the project without members if there's an error getting members
+        res.json({ ...baseProject, members: [] });
+      }
     } catch (error) {
+      console.error(`Error in /api/projects/:id endpoint for ID ${req.params.id}:`, error);
       res.status(500).json({ message: "Server error" });
     }
   });
