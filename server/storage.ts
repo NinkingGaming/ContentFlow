@@ -8,6 +8,8 @@ import {
   youtubeVideos, type YoutubeVideo, type InsertYoutubeVideo,
   projectFiles, type ProjectFile, type InsertProjectFile,
   projectFolders, type ProjectFolder, type InsertProjectFolder,
+  scriptData, type ScriptData, type InsertScriptData,
+  type ScriptCorrelation, type SpreadsheetRow,
   type ProjectFolderWithParent, type ProjectFileWithFolder
 } from "@shared/schema";
 import { db } from "./db";
@@ -698,6 +700,54 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error("Error deleting project folder:", error);
       return false;
+    }
+  }
+  // Script data operations
+  async getScriptData(projectId: number): Promise<ScriptData | undefined> {
+    const [data] = await db
+      .select()
+      .from(scriptData)
+      .where(eq(scriptData.projectId, projectId));
+    return data;
+  }
+
+  async createScriptData(insertData: InsertScriptData): Promise<ScriptData> {
+    const [data] = await db
+      .insert(scriptData)
+      .values(insertData)
+      .returning();
+    return data;
+  }
+
+  async updateScriptData(projectId: number, updates: Partial<InsertScriptData>): Promise<ScriptData | undefined> {
+    // Check if a script data entry exists for this project
+    const existing = await this.getScriptData(projectId);
+    
+    if (existing) {
+      // Update existing script data
+      const [updatedData] = await db
+        .update(scriptData)
+        .set({
+          ...updates,
+          updatedAt: new Date() // Ensure the updatedAt field is set
+        })
+        .where(eq(scriptData.projectId, projectId))
+        .returning();
+      return updatedData;
+    } else {
+      // Create new script data entry if it doesn't exist
+      if (!updates.scriptContent || !updates.correlations || !updates.spreadsheetData || !updates.createdBy) {
+        throw new Error("Missing required fields for script data creation");
+      }
+      
+      return await this.createScriptData({
+        projectId,
+        scriptContent: updates.scriptContent,
+        finalContent: updates.finalContent || "",
+        correlations: updates.correlations,
+        spreadsheetData: updates.spreadsheetData,
+        createdBy: updates.createdBy
+      });
     }
   }
 }
