@@ -23,6 +23,7 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, user: Partial<InsertUser>): Promise<User | undefined>;
+  deleteUser(id: number): Promise<boolean>;
   getUsers(): Promise<User[]>;
   
   // Project operations
@@ -139,6 +140,26 @@ export class DatabaseStorage implements IStorage {
 
   async getUsers(): Promise<User[]> {
     return await db.select().from(users);
+  }
+  
+  async deleteUser(id: number): Promise<boolean> {
+    try {
+      // Remove user from all project members
+      await db.delete(projectMembers).where(eq(projectMembers.userId, id));
+      
+      // Remove assignee references in content
+      await db
+        .update(contents)
+        .set({ assignedTo: null })
+        .where(eq(contents.assignedTo, id));
+      
+      // Remove user
+      await db.delete(users).where(eq(users.id, id));
+      return true;
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      return false;
+    }
   }
 
   // Project operations

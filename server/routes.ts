@@ -176,6 +176,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Delete user (admin only)
+  app.delete("/api/users/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const currentUser = req.user as any;
+      
+      // Don't allow admins to delete themselves
+      if (userId === currentUser.id) {
+        return res.status(400).json({ message: "Cannot delete your own account" });
+      }
+      
+      // Special protection for the mastercontrol account
+      if (currentUser.username !== 'mastercontrol') {
+        return res.status(403).json({ message: "Only mastercontrol can delete user accounts" });
+      }
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const success = await storage.deleteUser(userId);
+      if (success) {
+        res.status(200).json({ message: "User deleted successfully" });
+      } else {
+        res.status(500).json({ message: "Failed to delete user" });
+      }
+    } catch (error) {
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+  
   // Add new user (admin only)
   app.post("/api/users", isAuthenticated, isAdmin, async (req, res) => {
     try {
