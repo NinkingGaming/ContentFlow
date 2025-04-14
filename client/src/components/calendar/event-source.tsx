@@ -38,35 +38,50 @@ export function EventSource({ events, onCreateEvent }: EventSourceProps) {
   ];
 
   return (
-    <div className="flex flex-col md:flex-row gap-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg mb-4">
-      <div>
-        <h3 className="text-sm font-medium mb-2">Drag to calendar</h3>
-        <div className="flex flex-col md:flex-row gap-2">
-          {templateEvents.map(event => (
-            <div key={event.id} className="cursor-grab">
-              <EventItem event={event} />
-            </div>
-          ))}
-        </div>
-      </div>
+    <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg mb-4 shadow-md">
+      <h3 className="text-sm font-medium mb-3">Event Templates</h3>
       
-      <div className="ml-auto self-center">
-        <div className="text-xs text-gray-500 mb-1">
-          Drag items to schedule or click to add:
+      <div className="flex flex-col md:flex-row gap-6">
+        <div className="space-y-2">
+          <div className="text-xs font-medium text-gray-500 mb-1 flex items-center">
+            <span className="mr-2">📅</span> Drag to place on calendar:
+          </div>
+          <div className="flex flex-col md:flex-row gap-3">
+            {templateEvents.map(event => (
+              <div key={event.id} className="cursor-grab relative">
+                <div className="absolute -top-1 -right-1 w-5 h-5 bg-white dark:bg-gray-700 rounded-full flex items-center justify-center text-xs shadow-sm">
+                  <span>↓</span>
+                </div>
+                <EventItem event={event} />
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => onCreateEvent(hasFilmingDay ? 'secondary_filming_day' : 'filming_day')}
-            className="px-3 py-1 text-xs font-medium rounded-md bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800"
-          >
-            {hasFilmingDay ? "Add Secondary Filming" : "Add Filming Day"}
-          </button>
-          <button
-            onClick={() => onCreateEvent('upload_day')}
-            className="px-3 py-1 text-xs font-medium rounded-md bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800"
-          >
-            Add Upload Day
-          </button>
+        
+        <div className="md:ml-auto self-center mt-4 md:mt-0">
+          <div className="text-xs font-medium text-gray-500 mb-2 flex items-center">
+            <span className="mr-2">⚡</span> Quick add options:
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => onCreateEvent(hasFilmingDay ? 'secondary_filming_day' : 'filming_day')}
+              className={`px-3 py-1 text-xs font-medium rounded-md flex items-center ${
+                hasFilmingDay 
+                  ? "bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200" 
+                  : "bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900 dark:text-red-200"
+              }`}
+            >
+              <span className="mr-1">{hasFilmingDay ? "🎬" : "📹"}</span>
+              {hasFilmingDay ? "Add Secondary Filming" : "Add Filming Day"}
+            </button>
+            <button
+              onClick={() => onCreateEvent('upload_day')}
+              className="px-3 py-1 text-xs font-medium rounded-md bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 flex items-center"
+            >
+              <span className="mr-1">🚀</span>
+              Add Upload Day
+            </button>
+          </div>
         </div>
       </div>
     </div>

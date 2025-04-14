@@ -177,29 +177,38 @@ export function CalendarView({ projectId }: CalendarViewProps) {
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="space-y-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold">Schedule</h2>
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 gap-4">
+          <div>
+            <h2 className="text-2xl font-bold">Schedule Calendar</h2>
+            <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Plan filming days and upload schedules
+            </div>
+          </div>
           
-          <div className="flex items-center space-x-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={goToPreviousMonth}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            
-            <h3 className="text-lg font-medium min-w-[200px] text-center">
-              {new Date(currentYear, currentMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-            </h3>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={goToNextMonth}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+          <div className="flex flex-col md:flex-row items-center gap-4">
+            <div className="flex items-center space-x-2 bg-white dark:bg-gray-800 p-2 rounded-lg shadow-sm">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={goToPreviousMonth}
+                className="h-8 w-8 p-0"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              
+              <h3 className="text-lg font-medium min-w-[180px] text-center">
+                {new Date(currentYear, currentMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              </h3>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={goToNextMonth}
+                className="h-8 w-8 p-0"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
             
             <Button
               variant="outline"
@@ -212,6 +221,21 @@ export function CalendarView({ projectId }: CalendarViewProps) {
             >
               Today
             </Button>
+          </div>
+          
+          <div className="flex gap-2 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm text-xs">
+            <div className="flex items-center">
+              <div className="w-3 h-3 rounded-full bg-red-500 mr-1"></div>
+              <span>Filming</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-3 h-3 rounded-full bg-blue-500 mr-1"></div>
+              <span>Secondary</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-3 h-3 rounded-full bg-green-500 mr-1"></div>
+              <span>Upload</span>
+            </div>
           </div>
         </div>
         
@@ -251,18 +275,39 @@ export function CalendarView({ projectId }: CalendarViewProps) {
             }
           }}
         >
-          <DialogContent>
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>
-                {newEventType === 'filming_day' && 'Add Filming Day'}
-                {newEventType === 'secondary_filming_day' && 'Add Secondary Filming Day'}
-                {newEventType === 'upload_day' && 'Add Upload Day'}
+              <DialogTitle className="flex items-center">
+                {newEventType === 'filming_day' && (
+                  <>
+                    <span className="mr-2 text-xl">📹</span>
+                    <span className="bg-gradient-to-r from-red-500 to-red-600 bg-clip-text text-transparent">
+                      Add Filming Day
+                    </span>
+                  </>
+                )}
+                {newEventType === 'secondary_filming_day' && (
+                  <>
+                    <span className="mr-2 text-xl">🎬</span>
+                    <span className="bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent">
+                      Add Secondary Filming Day
+                    </span>
+                  </>
+                )}
+                {newEventType === 'upload_day' && (
+                  <>
+                    <span className="mr-2 text-xl">🚀</span>
+                    <span className="bg-gradient-to-r from-green-500 to-green-600 bg-clip-text text-transparent">
+                      Add Upload Day
+                    </span>
+                  </>
+                )}
               </DialogTitle>
             </DialogHeader>
             
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="date">Date</Label>
+                <Label htmlFor="date" className="font-medium">Date</Label>
                 <Input
                   id="date"
                   type="date"
@@ -272,21 +317,23 @@ export function CalendarView({ projectId }: CalendarViewProps) {
                       setSelectedDate(new Date(e.target.value));
                     }
                   }}
+                  className="border-2"
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="notes">Notes (Optional)</Label>
+                <Label htmlFor="notes" className="font-medium">Notes (Optional)</Label>
                 <Textarea
                   id="notes"
-                  placeholder="Add any notes about this event..."
+                  placeholder="Add any details about this event..."
                   value={eventNotes}
                   onChange={(e) => setEventNotes(e.target.value)}
+                  className="min-h-[100px] border-2"
                 />
               </div>
             </div>
             
-            <DialogFooter>
+            <DialogFooter className="gap-2 sm:gap-0">
               <Button 
                 variant="outline" 
                 onClick={() => {
@@ -296,7 +343,18 @@ export function CalendarView({ projectId }: CalendarViewProps) {
               >
                 Cancel
               </Button>
-              <Button onClick={handleSaveEvent}>Save Event</Button>
+              <Button 
+                onClick={handleSaveEvent}
+                className={
+                  newEventType === 'filming_day' 
+                    ? 'bg-red-500 hover:bg-red-600' 
+                    : newEventType === 'secondary_filming_day'
+                      ? 'bg-blue-500 hover:bg-blue-600'
+                      : 'bg-green-500 hover:bg-green-600'
+                }
+              >
+                Save Event
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
