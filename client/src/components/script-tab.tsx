@@ -69,8 +69,15 @@ export function ScriptTab({ projectId }: { projectId: number }) {
       // Set all the local state from the server data
       setScriptContent(scriptData.scriptContent);
       setFinalContent(scriptData.finalContent || "<p>Final formatted content will appear here...</p>");
-      setSpreadsheetData(scriptData.spreadsheetData);
-      setCorrelations(scriptData.correlations);
+      
+      // Type assertions to handle the unknown types from the database
+      if (Array.isArray(scriptData.spreadsheetData)) {
+        setSpreadsheetData(scriptData.spreadsheetData as SpreadsheetRow[]);
+      }
+      
+      if (Array.isArray(scriptData.correlations)) {
+        setCorrelations(scriptData.correlations as ScriptCorrelation[]);
+      }
       
       // Update the editor contents
       if (scriptEditorRef.current) {
@@ -236,14 +243,9 @@ export function ScriptTab({ projectId }: { projectId: number }) {
         scriptEditorRef.current.innerHTML = updatedContent;
       }
       
-      // Explicitly save the data with the new correlation
-      const scriptData: ScriptData = {
-        projectId,
-        content: scriptContent + `<p><span class="text-blue-500 cursor-pointer" data-text-id="${textId}" data-shot="${uncorrelatedShot.shotNumber}">Enter your text for this shot here...</span></p>`,
-        correlations: newCorrelations,
-        spreadsheetData: updatedData,
-        finalContent,
-      };
+      // Update content with new correlation
+      const updatedContent = scriptContent + `<p><span class="text-blue-500 cursor-pointer" data-text-id="${textId}" data-shot="${uncorrelatedShot.shotNumber}">Enter your text for this shot here...</span></p>`;
+      setScriptContent(updatedContent);
       
       // Save the updated script data
       saveData();
