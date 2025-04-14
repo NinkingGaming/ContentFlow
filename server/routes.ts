@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
+import { WebSocketServer, WebSocket } from 'ws';
 import { storage } from "./storage";
 import { pool } from "./db";
 import { 
@@ -1206,5 +1207,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const httpServer = createServer(app);
+  
+  // Setup WebSocket server (for real-time chat)
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  
+  // Store connected clients by user ID
+  const clients = new Map();
+  
+  wss.on('connection', (socket) => {
+    console.log('WebSocket client connected');
+    let userId = null;
+    
+    socket.on('message', (message) => {
+      try {
+        const data = JSON.parse(message.toString());
+        console.log('Received message:', data);
+        
+        // Handle authentication message
+        if (data.type === 'auth') {
+          userId = data.userId;
+          // Store this connection with the userId
+          clients.set(userId, socket);
+          console.log(`User ${userId} authenticated on WebSocket`);
+          
+          // Send a confirmation back to the client
+          socket.send(JSON.stringify({
+            type: 'auth_success',
+            userId: userId
+          }));
+        }
+        
+        // Handle chat messages
+        else if (data.type === 'chat_message') {
+          // Validate that the user is authenticated
+          if (!userId) {
+            socket.send(JSON.stringify({
+              type: 'error',
+              message: 'Not authenticated'
+            }));
+            return;
+          }
+          
+          const messageData = {
+            type: 'chat_message',
+            id: Date.now().toString(),
+            content: data.content,
+            sender: {
+              id: userId,
+              username: data.sender.username,
+              displayName: data.sender.displayName,
+              avatarInitials: data.sender.avatarInitials,
+              avatarColor: data.sender.avatarColor
+            },
+            timestamp: new Date().toISOString()
+          };
+          
+          // Broadcast to all connected clients
+          wss.clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify(messageData));
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error processing WebSocket message:', error);
+      }
+    });
+    
+    socket.on('close', () => {
+      console.log('WebSocket client disconnected');
+      if (userId) {
+        clients.delete(userId);
+        console.log(`User ${userId} disconnected from WebSocket`);
+      }
+    });
+  });
+  
   return httpServer;
 }
