@@ -719,11 +719,61 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createContent(insertContent: InsertContent): Promise<Content> {
-    const [content] = await db
-      .insert(contents)
-      .values(insertContent)
-      .returning();
-    return content;
+    try {
+      console.log("Creating content with data:", JSON.stringify(insertContent));
+      
+      // Use direct SQL query approach for better control and diagnostics
+      const client = await pool.connect();
+      
+      try {
+        // Start transaction
+        await client.query('BEGIN');
+        
+        // Insert content with direct SQL to avoid ORM type issues
+        const result = await client.query(
+          `INSERT INTO contents (
+            title, description, type, project_id, column_id, 
+            created_by, assigned_to, priority, progress, "order", 
+            due_date, created_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          RETURNING 
+            id, title, description, type, project_id AS "projectId", 
+            column_id AS "columnId", created_by AS "createdBy", 
+            assigned_to AS "assignedTo", priority, progress, "order", 
+            due_date AS "dueDate", created_at AS "createdAt"`,
+          [
+            insertContent.title,
+            insertContent.description || null,
+            insertContent.type,
+            insertContent.projectId,
+            insertContent.columnId,
+            insertContent.createdBy,
+            insertContent.assignedTo || null,
+            insertContent.priority || null,
+            insertContent.progress || 0,
+            insertContent.order || 0,
+            insertContent.dueDate || null,
+            new Date()
+          ]
+        );
+        
+        // Commit the transaction
+        await client.query('COMMIT');
+        
+        console.log("Content created successfully:", result.rows[0]);
+        return result.rows[0];
+      } catch (error) {
+        // Rollback the transaction on error
+        await client.query('ROLLBACK');
+        console.error("Error in SQL transaction for createContent:", error);
+        throw error;
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      console.error("Error in createContent:", error);
+      throw error;
+    }
   }
 
   async updateContent(id: number, updates: Partial<InsertContent>): Promise<Content | undefined> {

@@ -624,81 +624,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Content endpoints
   app.post("/api/contents", isAuthenticated, async (req, res) => {
     try {
-      console.log("Creating content with payload:", req.body);
+      console.log("Creating content with payload:", JSON.stringify(req.body));
       const user = req.user as any;
-      const contentData = insertContentSchema.parse({
-        ...req.body,
-        createdBy: user.id
-      });
       
-      console.log("Validated content data:", contentData);
-      
-      // Verify column exists
-      const columns = await storage.getColumns(contentData.projectId);
-      const column = columns.find(col => col.id === contentData.columnId);
-      if (!column) {
-        return res.status(404).json({ message: "Column not found" });
+      if (!user || !user.id) {
+        console.error("Unauthorized: user is missing or invalid", user);
+        return res.status(401).json({ message: "Unauthorized" });
       }
       
-      // Get current contents count to determine order
-      const contents = await storage.getContentByColumn(contentData.columnId);
-      const orderValue = contents.length;
-      
-      // Use direct SQL to ensure proper handling of all fields
-      const client = await pool.connect();
       try {
-        // Start transaction
-        await client.query('BEGIN');
+        // Validate the input data with ZodError handling
+        const contentData = insertContentSchema.parse({
+          ...req.body,
+          createdBy: user.id
+        });
         
-        // Insert content with direct SQL
-        console.log(`Creating content with SQL: title=${contentData.title}, columnId=${contentData.columnId}, order=${orderValue}`);
+        console.log("Validated content data:", JSON.stringify(contentData));
         
-        const contentResult = await client.query(
-          `INSERT INTO contents (
-             title, description, type, project_id, column_id, 
-             created_by, assigned_to, priority, progress, "order", 
-             due_date, created_at
-           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-           RETURNING 
-             id, title, description, type, project_id AS "projectId", 
-             column_id AS "columnId", created_by AS "createdBy", 
-             assigned_to AS "assignedTo", priority, progress, "order", 
-             due_date AS "dueDate", created_at AS "createdAt"`,
-          [
-            contentData.title,
-            contentData.description || null,
-            contentData.type || 'task',
-            contentData.projectId,
-            contentData.columnId,
-            contentData.createdBy,
-            contentData.assignedTo || null,
-            contentData.priority || null,
-            contentData.progress || null,
-            orderValue,
-            contentData.dueDate || null,
-            new Date()
-          ]
-        );
+        // Verify the project exists
+        const project = await storage.getProject(contentData.projectId);
+        if (!project) {
+          console.error(`Project not found: ${contentData.projectId}`);
+          return res.status(404).json({ message: "Project not found" });
+        }
         
-        // Commit transaction
-        await client.query('COMMIT');
+        // Verify column exists and belongs to the project
+        const columns = await storage.getColumns(contentData.projectId);
+        const column = columns.find(col => col.id === contentData.columnId);
+        if (!column) {
+          console.error(`Column not found: ${contentData.columnId} in project ${contentData.projectId}`);
+          return res.status(404).json({ message: "Column not found" });
+        }
         
-        const content = contentResult.rows[0];
-        console.log("Content created successfully:", content);
-        res.status(201).json(content);
-      } catch (error) {
-        await client.query('ROLLBACK');
-        console.error("Transaction error in content creation:", error);
-        throw error;
-      } finally {
-        client.release();
+        // Get current contents count to determine order
+        const contents = await storage.getContentByColumn(contentData.columnId);
+        const orderValue = contents.length;
+        
+        // Use direct SQL to ensure proper handling of all fields
+        const client = await pool.connect();
+        try {
+          // Start transaction
+          await client.query('BEGIN');
+          
+          // Insert content with direct SQL
+          console.log(`Creating content with SQL: title=${contentData.title}, columnId=${contentData.columnId}, order=${orderValue}`);
+          
+          const contentResult = await client.query(
+            `INSERT INTO contents (
+              title, description, type, project_id, column_id, 
+              created_by, assigned_to, priority, progress, "order", 
+              due_date, created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            RETURNING 
+              id, title, description, type, project_id AS "projectId", 
+              column_id AS "columnId", created_by AS "createdBy", 
+              assigned_to AS "assignedTo", priority, progress, "order", 
+              due_date AS "dueDate", created_at AS "createdAt"`,
+            [
+              contentData.title,
+              contentData.description || null,
+              contentData.type || 'task',
+              contentData.projectId,
+              contentData.columnId,
+              contentData.createdBy,
+              contentData.assignedTo || null,
+              contentData.priority || null,
+              contentData.progress || 0,
+              orderValue,
+              contentData.dueDate || null,
+              new Date()
+            ]
+          );
+          
+          // Commit transaction
+          await client.query('COMMIT');
+          
+          const content = contentResult.rows[0];
+          console.log("Content created successfully:", JSON.stringify(content));
+          return res.status(201).json(content);
+        } catch (dbError) {
+          await client.query('ROLLBACK');
+          console.error("Transaction error in content creation:", dbError);
+          console.error("Transaction error stack:", dbError instanceof Error ? dbError.stack : "No stack trace");
+          return res.status(500).json({ 
+            message: "Database error creating content", 
+            error: dbError instanceof Error ? dbError.message : String(dbError)
+          });
+        } finally {
+          client.release();
+        }
+      } catch (validationError) {
+        if (validationError instanceof ZodError) {
+          console.error("Validation error details:", validationError.errors);
+          return res.status(400).json({ 
+            message: "Invalid content data", 
+            error: fromZodError(validationError).message
+          });
+        }
+        throw validationError;
       }
     } catch (error) {
       console.error("Error creating content:", error);
-      if (error instanceof ZodError) {
-        console.error("Validation error details:", error.errors);
-        return res.status(400).json({ message: JSON.stringify(error.errors, null, 2) });
-      }
+      console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace");
       return res.status(500).json({ message: "Server error" });
     }
   });
