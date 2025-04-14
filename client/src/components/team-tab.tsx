@@ -569,7 +569,9 @@ export function TeamTab() {
             </TableBody>
           </Table>
         </div>
-        <TableCaption>List of all team members and their roles</TableCaption>
+        <div className="p-2 text-sm text-center text-muted-foreground">
+          List of all team members and their roles
+        </div>
       </div>
 
       <EditRoleDialog />

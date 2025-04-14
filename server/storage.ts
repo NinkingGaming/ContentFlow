@@ -144,14 +144,67 @@ export class DatabaseStorage implements IStorage {
   
   async deleteUser(id: number): Promise<boolean> {
     try {
-      // Remove user from all project members
-      await db.delete(projectMembers).where(eq(projectMembers.userId, id));
+      // First, find projects created by this user
+      const userProjects = await db.select().from(projects).where(eq(projects.createdBy, id));
       
+      // For each project created by this user 
+      for (const project of userProjects) {
+        // First get all columns
+        const projectColumns = await db.select().from(columns).where(eq(columns.projectId, project.id));
+        const columnIds = projectColumns.map(c => c.id);
+        
+        // Delete all contents in those columns
+        if (columnIds.length > 0) {
+          // Delete attachments
+          const projectContents = await db.select().from(contents).where(
+            sql`${contents.columnId} IN (${columnIds.join(',')})`
+          );
+          for (const content of projectContents) {
+            await db.delete(attachments).where(eq(attachments.contentId, content.id));
+          }
+          
+          // Delete contents
+          await db.delete(contents).where(
+            sql`${contents.columnId} IN (${columnIds.join(',')})`
+          );
+        }
+        
+        // Delete columns
+        await db.delete(columns).where(eq(columns.projectId, project.id));
+        
+        // Delete project members 
+        await db.delete(projectMembers).where(eq(projectMembers.projectId, project.id));
+        
+        // Delete script data
+        await db.delete(scriptData).where(eq(scriptData.projectId, project.id));
+        
+        // Delete project files
+        await db.delete(projectFiles).where(eq(projectFiles.projectId, project.id));
+        
+        // Delete project folders
+        await db.delete(projectFolders).where(eq(projectFolders.projectId, project.id));
+        
+        // Delete youtube videos
+        await db.delete(youtubeVideos).where(eq(youtubeVideos.projectId, project.id));
+        
+        // Finally delete the project 
+        await db.delete(projects).where(eq(projects.id, project.id));
+      }
+      
+      // Update contents created by this user to be owned by admin user (ID 6 - mastercontrol)
+      await db
+        .update(contents)
+        .set({ createdBy: 6 })
+        .where(eq(contents.createdBy, id));
+        
       // Remove assignee references in content
       await db
         .update(contents)
         .set({ assignedTo: null })
         .where(eq(contents.assignedTo, id));
+      
+      // Remove user from all project members
+      await db.delete(projectMembers).where(eq(projectMembers.userId, id));
       
       // Remove user
       await db.delete(users).where(eq(users.id, id));
@@ -179,6 +232,15 @@ export class DatabaseStorage implements IStorage {
   async getProjectsByUserId(userId: number): Promise<Project[]> {
     try {
       console.log(`Getting projects for user ID: ${userId}`);
+      
+      // First check if the user is an admin
+      const user = await this.getUser(userId);
+      if (user && user.role === UserRole.ADMIN) {
+        // Admin users can see all projects in the system
+        console.log(`User is an admin - returning ALL projects`);
+        const allProjects = await db.select().from(projects);
+        return allProjects;
+      }
       
       // Get projects created by user
       const userProjects = await db.select().from(projects).where(eq(projects.createdBy, userId));
