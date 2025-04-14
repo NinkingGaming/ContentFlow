@@ -397,7 +397,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         await client.query('ROLLBACK');
         console.error("Transaction error in project creation:", error);
-        throw error;
+        console.error("Transaction error stack:", error instanceof Error ? error.stack : "No stack trace");
+        // Instead of just throwing the error, provide detailed information back to the client
+        return res.status(500).json({ 
+          message: "Database error creating project", 
+          error: error instanceof Error ? error.message : String(error)
+        });
       } finally {
         client.release();
       }

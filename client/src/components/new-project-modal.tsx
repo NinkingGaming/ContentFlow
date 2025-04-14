@@ -79,10 +79,11 @@ export function NewProjectModal({ isOpen, onClose, users }: NewProjectModalProps
       
       // Navigate to the new project
       setLocation(`/projects/${project.id}`);
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Project creation error:", error);
       toast({
-        title: "Error",
-        description: "Failed to create project",
+        title: "Error Creating Project",
+        description: error.message || "Failed to create project. Please try again.",
         variant: "destructive",
       });
     } finally {
