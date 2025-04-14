@@ -204,19 +204,17 @@ export const insertChatChannelSchema = createInsertSchema(chatChannels).omit({
 
 // Chat Channel Members
 export const chatChannelMembers = pgTable("chat_channel_members", {
-  id: serial("id").primaryKey(),
   channelId: integer("channel_id").notNull().references(() => chatChannels.id),
   userId: integer("user_id").notNull().references(() => users.id),
   isAdmin: boolean("is_admin").notNull().default(false),
   joinedAt: timestamp("joined_at").notNull().defaultNow(),
 }, (table) => {
   return {
-    userChannelIdx: primaryKey(table.channelId, table.userId),
+    pk: primaryKey({ columns: [table.channelId, table.userId] }),
   }
 });
 
 export const insertChatChannelMemberSchema = createInsertSchema(chatChannelMembers).omit({
-  id: true,
   joinedAt: true,
 });
 
