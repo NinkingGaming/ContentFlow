@@ -45,7 +45,13 @@ export function ProjectContextMenu({ project, children }: ProjectContextMenuProp
 
   const deleteMutation = useMutation({
     mutationFn: async (projectId: number) => {
-      const response = await apiRequest('DELETE', `/api/projects/${projectId}`, undefined);
+      const response = await fetch(`/api/projects/${projectId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || 'Failed to delete project');
