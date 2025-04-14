@@ -177,6 +177,16 @@ export class DatabaseStorage implements IStorage {
         UPDATE script_data SET created_by = 6 WHERE created_by = $1
       `, [id]);
       
+      // Fix project files references
+      await client.query(`
+        UPDATE project_files SET created_by = 6 WHERE created_by = $1
+      `, [id]);
+      
+      // Fix project folders references
+      await client.query(`
+        UPDATE project_folders SET created_by = 6 WHERE created_by = $1
+      `, [id]);
+      
       // Find projects created by this user
       const userProjects = await client.query(`
         SELECT id FROM projects WHERE created_by = $1
@@ -373,32 +383,91 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteProject(id: number): Promise<boolean> {
-    // First, delete related content, members, and columns
+    const client = await pool.connect();
+    
     try {
+      // Start transaction
+      await client.query('BEGIN');
+      
+      console.log(`Deleting project with ID: ${id}`);
+      
       // Get columns for this project
-      const projectColumns = await db.select().from(columns).where(eq(columns.projectId, id));
-      const columnIds = projectColumns.map(c => c.id);
+      const projectColumns = await client.query(`
+        SELECT id FROM columns WHERE project_id = $1
+      `, [id]);
+      
+      const columnIds = projectColumns.rows.map(c => c.id);
+      console.log(`Found ${columnIds.length} columns to delete`);
       
       // Delete contents in these columns
       if (columnIds.length > 0) {
-        await db.delete(contents).where(
-          sql`${contents.columnId} IN (${columnIds.join(',')})`
-        );
+        const contentIdsResult = await client.query(`
+          SELECT id FROM contents WHERE column_id IN (${columnIds.join(',')})
+        `);
+        
+        const contentIds = contentIdsResult.rows.map(c => c.id);
+        console.log(`Found ${contentIds.length} contents to delete`);
+        
+        if (contentIds.length > 0) {
+          // Delete attachments for these contents
+          await client.query(`
+            DELETE FROM attachments WHERE content_id IN (${contentIds.join(',')})
+          `);
+        }
+        
+        // Delete all contents in these columns
+        await client.query(`
+          DELETE FROM contents WHERE column_id IN (${columnIds.join(',')})
+        `);
       }
       
       // Delete columns
-      await db.delete(columns).where(eq(columns.projectId, id));
+      await client.query(`
+        DELETE FROM columns WHERE project_id = $1
+      `, [id]);
       
       // Delete project members
-      await db.delete(projectMembers).where(eq(projectMembers.projectId, id));
+      await client.query(`
+        DELETE FROM project_members WHERE project_id = $1
+      `, [id]);
+      
+      // Delete project files
+      await client.query(`
+        DELETE FROM project_files WHERE project_id = $1
+      `, [id]);
+      
+      // Delete project folders
+      await client.query(`
+        DELETE FROM project_folders WHERE project_id = $1
+      `, [id]);
+      
+      // Delete YouTube videos
+      await client.query(`
+        DELETE FROM youtube_videos WHERE project_id = $1
+      `, [id]);
+      
+      // Delete script data
+      await client.query(`
+        DELETE FROM script_data WHERE project_id = $1
+      `, [id]);
       
       // Finally delete the project
-      await db.delete(projects).where(eq(projects.id, id));
+      await client.query(`
+        DELETE FROM projects WHERE id = $1
+      `, [id]);
       
+      // Commit the transaction
+      await client.query('COMMIT');
+      console.log(`Successfully deleted project ${id}`);
       return true;
     } catch (error) {
+      // If any error occurs, rollback the transaction
+      await client.query('ROLLBACK');
       console.error("Error deleting project:", error);
       return false;
+    } finally {
+      // Always release the client back to the pool
+      client.release();
     }
   }
 
