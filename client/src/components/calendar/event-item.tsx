@@ -25,14 +25,25 @@ export function EventItem({ event, isPlaced = false, onRemove }: EventItemProps)
   
   // Visual styles based on event type
   const typeStyles = {
-    filming_day: "bg-red-500 border-red-600",
-    upload_day: "bg-green-500 border-green-600",
-    secondary_filming_day: "bg-blue-500 border-blue-600",
+    filming_day: "bg-red-500 border-red-600 bg-gradient-to-r from-red-500 to-red-600",
+    upload_day: "bg-green-500 border-green-600 bg-gradient-to-r from-green-500 to-green-600",
+    secondary_filming_day: "bg-blue-500 border-blue-600 bg-gradient-to-r from-blue-500 to-blue-600",
+  };
+  
+  // Icons for different event types
+  const typeIcons = {
+    filming_day: "📹",
+    upload_day: "🚀",
+    secondary_filming_day: "🎬",
   };
   
   const eventStyle = event.type in typeStyles 
     ? typeStyles[event.type as keyof typeof typeStyles]
     : "bg-gray-500 border-gray-600";
+    
+  const eventIcon = event.type in typeIcons
+    ? typeIcons[event.type as keyof typeof typeIcons]
+    : "📅";
   
   return (
     <div
@@ -46,7 +57,10 @@ export function EventItem({ event, isPlaced = false, onRemove }: EventItemProps)
       style={{ maxWidth: isPlaced ? "100%" : "200px" }}
     >
       <div className="flex justify-between items-center">
-        <span>{event.title}</span>
+        <span className="flex items-center">
+          <span className="mr-1">{eventIcon}</span>
+          <span>{event.title}</span>
+        </span>
         {isPlaced && onRemove && (
           <button 
             onClick={() => onRemove(event.id)}

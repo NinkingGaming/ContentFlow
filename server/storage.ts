@@ -1234,17 +1234,39 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createScheduleEvent(insertEvent: InsertScheduleEvent): Promise<ScheduleEvent> {
+    // Convert the Date object to ISO string
+    const processedEvent = {
+      ...insertEvent,
+      date: insertEvent.date instanceof Date ? 
+            insertEvent.date.toISOString() : 
+            insertEvent.date
+    };
+    
     const [event] = await db
       .insert(scheduleEvents)
-      .values(insertEvent)
+      .values({
+        projectId: processedEvent.projectId,
+        type: processedEvent.type,
+        title: processedEvent.title,
+        date: processedEvent.date,
+        notes: processedEvent.notes,
+        color: processedEvent.color,
+        createdBy: processedEvent.createdBy,
+      })
       .returning();
     return event;
   }
 
   async updateScheduleEvent(id: number, updates: Partial<InsertScheduleEvent>): Promise<ScheduleEvent | undefined> {
+    // Process date if it exists in the updates
+    const processedUpdates = { ...updates };
+    if (updates.date && updates.date instanceof Date) {
+      processedUpdates.date = updates.date.toISOString();
+    }
+    
     const [updatedEvent] = await db
       .update(scheduleEvents)
-      .set(updates)
+      .set(processedUpdates)
       .where(eq(scheduleEvents.id, id))
       .returning();
     return updatedEvent;
