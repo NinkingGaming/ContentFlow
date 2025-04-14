@@ -34,6 +34,9 @@ export const projects = pgTable("projects", {
   name: text("name").notNull(),
   description: text("description"),
   type: text("type").notNull(),
+  director: text("director"),
+  writer: text("writer"),
+  actors: text("actors"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   createdBy: integer("created_by").notNull().references(() => users.id),
 });

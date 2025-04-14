@@ -707,43 +707,73 @@ export class DatabaseStorage implements IStorage {
   }
 
   async moveContent(id: number, newColumnId: number, newOrder: number): Promise<Content | undefined> {
-    // Get the content to move
-    const content = await this.getContent(id);
-    if (!content) return undefined;
-    
-    const oldColumnId = content.columnId;
-    
-    // Update the content's column and order
-    const [movedContent] = await db
-      .update(contents)
-      .set({
-        columnId: newColumnId,
-        order: newOrder
-      })
-      .where(eq(contents.id, id))
-      .returning();
-    
-    // Reorder contents in old column
-    const oldColumnContents = await this.getContentByColumn(oldColumnId);
-    for (let i = 0; i < oldColumnContents.length; i++) {
-      await db
-        .update(contents)
-        .set({ order: i })
-        .where(eq(contents.id, oldColumnContents[i].id));
-    }
-    
-    // Reorder contents in new column
-    const newColumnContents = await this.getContentByColumn(newColumnId);
-    for (let i = 0; i < newColumnContents.length; i++) {
-      if (i !== newOrder) { // Skip the already updated content
-        await db
+    try {
+      // Start a transaction
+      const client = await db.transaction(async (tx) => {
+        // Get the content to move
+        const [content] = await tx
+          .select()
+          .from(contents)
+          .where(eq(contents.id, id));
+          
+        if (!content) throw new Error("Content not found");
+        
+        const oldColumnId = content.columnId;
+        
+        // Update the content's column and order
+        const [movedContent] = await tx
           .update(contents)
-          .set({ order: i >= newOrder ? i + 1 : i })
-          .where(eq(contents.id, newColumnContents[i].id));
-      }
+          .set({
+            columnId: newColumnId,
+            order: newOrder
+          })
+          .where(eq(contents.id, id))
+          .returning();
+        
+        // Get contents from old column and reorder them
+        if (oldColumnId !== newColumnId) {
+          const oldColumnContents = await tx
+            .select()
+            .from(contents)
+            .where(eq(contents.columnId, oldColumnId))
+            .orderBy(contents.order);
+            
+          // Update order for old column contents
+          for (let i = 0; i < oldColumnContents.length; i++) {
+            await tx
+              .update(contents)
+              .set({ order: i })
+              .where(eq(contents.id, oldColumnContents[i].id));
+          }
+        }
+        
+        // Get contents from new column and shift items as needed
+        const newColumnContents = await tx
+          .select()
+          .from(contents)
+          .where(eq(contents.columnId, newColumnId))
+          .orderBy(contents.order);
+          
+        // Update order for new column contents, making room for the moved item
+        for (let i = 0; i < newColumnContents.length; i++) {
+          // Skip the moved content since we already updated it
+          if (newColumnContents[i].id !== id) {
+            const newPos = i >= newOrder ? i + 1 : i;
+            await tx
+              .update(contents)
+              .set({ order: newPos })
+              .where(eq(contents.id, newColumnContents[i].id));
+          }
+        }
+        
+        return movedContent;
+      });
+      
+      return client;
+    } catch (error) {
+      console.error("Error moving content:", error);
+      return undefined;
     }
-    
-    return movedContent;
   }
 
   async deleteContent(id: number): Promise<boolean> {

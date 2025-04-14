@@ -90,6 +90,22 @@ export default function ProjectPage({ id }: { id: string }) {
               <div>
                 <h1 className="text-xl font-semibold text-neutral-900">{project?.name}</h1>
                 <p className="text-sm text-neutral-500 mt-1">{project?.description}</p>
+                
+                {/* Project Metadata Fields */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+                  <div className="flex items-center">
+                    <span className="text-sm font-medium text-neutral-700 mr-2">Director:</span>
+                    <span className="text-sm text-neutral-600">{project?.director || 'Not assigned'}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="text-sm font-medium text-neutral-700 mr-2">Writer:</span>
+                    <span className="text-sm text-neutral-600">{project?.writer || 'Not assigned'}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="text-sm font-medium text-neutral-700 mr-2">Actors:</span>
+                    <span className="text-sm text-neutral-600">{project?.actors || 'Not assigned'}</span>
+                  </div>
+                </div>
               </div>
               <div className="flex items-center space-x-2 mt-4 md:mt-0">
                 <div className="flex -space-x-2">
@@ -109,8 +125,8 @@ export default function ProjectPage({ id }: { id: string }) {
                   )}
                 </div>
                 <button className="bg-white hover:bg-neutral-100 text-neutral-700 text-sm py-1 px-3 border border-neutral-300 rounded-md flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
-                  <span>Share</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                  <span>Edit Project</span>
                 </button>
                 <button 
                   className="bg-primary hover:bg-primary/90 text-white text-sm py-1 px-3 rounded-md flex items-center"
@@ -127,7 +143,7 @@ export default function ProjectPage({ id }: { id: string }) {
                 className={`px-4 py-2 ${activeTab === "board" ? "text-primary border-b-2 border-primary font-medium" : "text-neutral-500 hover:text-neutral-800"}`}
                 onClick={() => setActiveTab("board")}
               >
-                Board
+                Pre-Production
               </button>
               <button 
                 className={`px-4 py-2 ${activeTab === "write" ? "text-primary border-b-2 border-primary font-medium" : "text-neutral-500 hover:text-neutral-800"}`}
