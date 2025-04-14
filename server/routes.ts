@@ -1,12 +1,10 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { db } from "./db";
 import { 
   insertUserSchema, insertProjectSchema, insertColumnSchema, 
   insertContentSchema, insertAttachmentSchema, insertYoutubeVideoSchema,
-  insertProjectFileSchema, insertProjectFolderSchema, insertScriptDataSchema,
-  columns
+  insertProjectFileSchema, insertProjectFolderSchema, insertScriptDataSchema
 } from "../shared/schema";
 import { z } from "zod";
 import { ZodError } from "zod";
@@ -324,49 +322,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Create default columns - using direct database insert
+      // Create default columns
       try {
-        // Direct db operations for column creation
+        // Create them using the storage interface
+        await storage.createColumn({
+          projectId: project.id,
+          name: "Ideation",
+          color: "#EAB308",
+          order: 0
+        });
         
-        // Create Ideation column
-        await db
-          .insert(columns)
-          .values({
-            projectId: project.id,
-            name: "Ideation",
-            color: "#EAB308",
-            order: 0
-          });
+        await storage.createColumn({
+          projectId: project.id,
+          name: "Pre-Production",
+          color: "#3B82F6",
+          order: 1
+        });
         
-        // Create Pre-Production column
-        await db
-          .insert(columns)
-          .values({
-            projectId: project.id,
-            name: "Pre-Production",
-            color: "#3B82F6",
-            order: 1
-          });
+        await storage.createColumn({
+          projectId: project.id,
+          name: "Production", 
+          color: "#8B5CF6",
+          order: 2
+        });
         
-        // Create Production column
-        await db
-          .insert(columns)
-          .values({
-            projectId: project.id,
-            name: "Production", 
-            color: "#8B5CF6",
-            order: 2
-          });
-        
-        // Create Post-Production column
-        await db
-          .insert(columns)
-          .values({
-            projectId: project.id,
-            name: "Post-Production",
-            color: "#10B981",
-            order: 3
-          });
+        await storage.createColumn({
+          projectId: project.id,
+          name: "Post-Production",
+          color: "#10B981",
+          order: 3
+        });
       } catch (columnError) {
         console.error("Error creating columns:", columnError);
         throw columnError;
