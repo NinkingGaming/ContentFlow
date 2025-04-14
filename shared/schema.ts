@@ -348,3 +348,24 @@ export interface SpreadsheetRow {
   shotData4: string; // Location
   hasCorrelation: boolean;
 }
+
+// Schedule Events table
+export const scheduleEvents = pgTable("schedule_events", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id),
+  title: text("title").notNull(),
+  type: text("type").notNull(), // 'filming_day', 'upload_day', 'secondary_filming_day', etc.
+  date: timestamp("date").notNull(),
+  notes: text("notes"),
+  color: text("color").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").notNull().references(() => users.id),
+});
+
+export const insertScheduleEventSchema = createInsertSchema(scheduleEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type ScheduleEvent = typeof scheduleEvents.$inferSelect;
+export type InsertScheduleEvent = z.infer<typeof insertScheduleEventSchema>;

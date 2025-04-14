@@ -101,6 +101,14 @@ export interface IStorage {
   getPublishedFinals(projectId: number): Promise<PublishedFinal[]>;
   createPublishedFinal(data: InsertPublishedFinal): Promise<PublishedFinal>;
   
+  // Schedule events operations
+  getScheduleEvent(id: number): Promise<ScheduleEvent | undefined>;
+  getScheduleEventsByProject(projectId: number): Promise<ScheduleEvent[]>;
+  getScheduleEventsByMonth(projectId: number, year: number, month: number): Promise<ScheduleEvent[]>;
+  createScheduleEvent(event: InsertScheduleEvent): Promise<ScheduleEvent>;
+  updateScheduleEvent(id: number, event: Partial<InsertScheduleEvent>): Promise<ScheduleEvent | undefined>;
+  deleteScheduleEvent(id: number): Promise<boolean>;
+  
   // Chat operations
   getChatChannel(id: number): Promise<ChatChannel | undefined>;
   getChatChannelWithMembers(id: number): Promise<ChatChannelWithMembers | undefined>;
@@ -1183,6 +1191,74 @@ export class DatabaseStorage implements IStorage {
       .values(insertFinal)
       .returning();
     return final;
+  }
+  
+  // Schedule events operations
+  async getScheduleEvent(id: number): Promise<ScheduleEvent | undefined> {
+    const [event] = await db
+      .select()
+      .from(scheduleEvents)
+      .where(eq(scheduleEvents.id, id));
+    return event;
+  }
+
+  async getScheduleEventsByProject(projectId: number): Promise<ScheduleEvent[]> {
+    return await db
+      .select()
+      .from(scheduleEvents)
+      .where(eq(scheduleEvents.projectId, projectId))
+      .orderBy(scheduleEvents.date);
+  }
+
+  async getScheduleEventsByMonth(projectId: number, year: number, month: number): Promise<ScheduleEvent[]> {
+    // Calculate start and end date for the specified month
+    // Include 2 weeks before and 2 weeks after for padding
+    const startDate = new Date(year, month - 1, 1);
+    startDate.setDate(startDate.getDate() - 14); // 2 weeks before
+    
+    const endDate = new Date(year, month, 0); // Last day of month
+    endDate.setDate(endDate.getDate() + 14); // 2 weeks after
+    
+    return await db
+      .select()
+      .from(scheduleEvents)
+      .where(
+        and(
+          eq(scheduleEvents.projectId, projectId),
+          sql`${scheduleEvents.date} >= ${startDate.toISOString()}`,
+          sql`${scheduleEvents.date} <= ${endDate.toISOString()}`
+        )
+      )
+      .orderBy(scheduleEvents.date);
+  }
+
+  async createScheduleEvent(insertEvent: InsertScheduleEvent): Promise<ScheduleEvent> {
+    const [event] = await db
+      .insert(scheduleEvents)
+      .values(insertEvent)
+      .returning();
+    return event;
+  }
+
+  async updateScheduleEvent(id: number, updates: Partial<InsertScheduleEvent>): Promise<ScheduleEvent | undefined> {
+    const [updatedEvent] = await db
+      .update(scheduleEvents)
+      .set(updates)
+      .where(eq(scheduleEvents.id, id))
+      .returning();
+    return updatedEvent;
+  }
+
+  async deleteScheduleEvent(id: number): Promise<boolean> {
+    try {
+      await db
+        .delete(scheduleEvents)
+        .where(eq(scheduleEvents.id, id));
+      return true;
+    } catch (error) {
+      console.error("Error deleting schedule event:", error);
+      return false;
+    }
   }
 
   // Chat operations
