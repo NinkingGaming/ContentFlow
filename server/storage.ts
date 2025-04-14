@@ -10,9 +10,10 @@ import {
   projectFolders, type ProjectFolder, type InsertProjectFolder,
   scriptData, type ScriptData, type InsertScriptData,
   type ScriptCorrelation, type SpreadsheetRow,
-  type ProjectFolderWithParent, type ProjectFileWithFolder
+  type ProjectFolderWithParent, type ProjectFileWithFolder,
+  UserRole
 } from "@shared/schema";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { eq, and, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
@@ -143,75 +144,72 @@ export class DatabaseStorage implements IStorage {
   }
   
   async deleteUser(id: number): Promise<boolean> {
+    const client = await pool.connect();
+    
     try {
-      // First, find projects created by this user
-      const userProjects = await db.select().from(projects).where(eq(projects.createdBy, id));
+      // Start a transaction
+      await client.query('BEGIN');
       
-      // For each project created by this user 
-      for (const project of userProjects) {
-        // First get all columns
-        const projectColumns = await db.select().from(columns).where(eq(columns.projectId, project.id));
-        const columnIds = projectColumns.map(c => c.id);
-        
-        // Delete all contents in those columns
-        if (columnIds.length > 0) {
-          // Delete attachments
-          const projectContents = await db.select().from(contents).where(
-            sql`${contents.columnId} IN (${columnIds.join(',')})`
-          );
-          for (const content of projectContents) {
-            await db.delete(attachments).where(eq(attachments.contentId, content.id));
-          }
-          
-          // Delete contents
-          await db.delete(contents).where(
-            sql`${contents.columnId} IN (${columnIds.join(',')})`
-          );
-        }
-        
-        // Delete columns
-        await db.delete(columns).where(eq(columns.projectId, project.id));
-        
-        // Delete project members 
-        await db.delete(projectMembers).where(eq(projectMembers.projectId, project.id));
-        
-        // Delete script data
-        await db.delete(scriptData).where(eq(scriptData.projectId, project.id));
-        
-        // Delete project files
-        await db.delete(projectFiles).where(eq(projectFiles.projectId, project.id));
-        
-        // Delete project folders
-        await db.delete(projectFolders).where(eq(projectFolders.projectId, project.id));
-        
-        // Delete youtube videos
-        await db.delete(youtubeVideos).where(eq(youtubeVideos.projectId, project.id));
-        
-        // Finally delete the project 
-        await db.delete(projects).where(eq(projects.id, project.id));
+      console.log(`Deleting user with ID: ${id}`);
+      
+      // Find all content created by this user
+      const contentsCreatedByUser = await client.query(`
+        SELECT id FROM contents WHERE created_by = $1
+      `, [id]);
+      
+      console.log(`Found ${contentsCreatedByUser.rowCount} contents created by this user`);
+      
+      // Reassign all content created by this user to mastercontrol (id=6)
+      if (contentsCreatedByUser && contentsCreatedByUser.rowCount && contentsCreatedByUser.rowCount > 0) {
+        await client.query(`
+          UPDATE contents SET created_by = 6 WHERE created_by = $1
+        `, [id]);
+        console.log(`Reassigned all content to mastercontrol`);
       }
       
-      // Update contents created by this user to be owned by admin user (ID 6 - mastercontrol)
-      await db
-        .update(contents)
-        .set({ createdBy: 6 })
-        .where(eq(contents.createdBy, id));
-        
-      // Remove assignee references in content
-      await db
-        .update(contents)
-        .set({ assignedTo: null })
-        .where(eq(contents.assignedTo, id));
+      // Clear assignee references
+      await client.query(`
+        UPDATE contents SET assigned_to = NULL WHERE assigned_to = $1
+      `, [id]);
       
-      // Remove user from all project members
-      await db.delete(projectMembers).where(eq(projectMembers.userId, id));
+      // Find projects created by this user
+      const userProjects = await client.query(`
+        SELECT id FROM projects WHERE created_by = $1
+      `, [id]);
       
-      // Remove user
-      await db.delete(users).where(eq(users.id, id));
+      console.log(`Found ${userProjects.rowCount} projects created by this user`);
+      
+      // For each project created by this user, either delete it or reassign it
+      if (userProjects.rowCount > 0) {
+        // Option: Reassign projects to mastercontrol (id=6)
+        await client.query(`
+          UPDATE projects SET created_by = 6 WHERE created_by = $1
+        `, [id]);
+        console.log(`Reassigned all projects to mastercontrol`);
+      }
+      
+      // Remove from project members
+      await client.query(`
+        DELETE FROM project_members WHERE user_id = $1
+      `, [id]);
+      
+      // Finally delete the user
+      await client.query(`
+        DELETE FROM users WHERE id = $1
+      `, [id]);
+      
+      // If we got here without errors, commit the transaction
+      await client.query('COMMIT');
+      console.log(`Successfully deleted user ${id}`);
       return true;
     } catch (error) {
+      // If any error occurs, rollback the transaction
+      await client.query('ROLLBACK');
       console.error("Error deleting user:", error);
       return false;
+    } finally {
+      // Always release the client back to the pool
+      client.release();
     }
   }
 
@@ -279,11 +277,85 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createProject(insertProject: InsertProject): Promise<Project> {
-    const [project] = await db
-      .insert(projects)
-      .values(insertProject)
-      .returning();
-    return project;
+    const client = await pool.connect();
+    
+    try {
+      // Start transaction
+      await client.query('BEGIN');
+      
+      // Insert the project
+      const projectResult = await client.query(`
+        INSERT INTO projects (name, description, type, created_by, created_at)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING *
+      `, [
+        insertProject.name, 
+        insertProject.description, 
+        insertProject.type, 
+        insertProject.createdBy, 
+        new Date()
+      ]);
+      
+      const project = projectResult.rows[0];
+      
+      // Get all admin users
+      const adminUsers = await client.query(`
+        SELECT id FROM users WHERE role = $1
+      `, [UserRole.ADMIN]);
+      
+      console.log(`Found ${adminUsers.rowCount} admin users to add to project ${project.id}`);
+      
+      // Add all admin users to the project
+      for (const adminUser of adminUsers.rows) {
+        await client.query(`
+          INSERT INTO project_members (project_id, user_id)
+          VALUES ($1, $2)
+          ON CONFLICT (project_id, user_id) DO NOTHING
+        `, [project.id, adminUser.id]);
+      }
+      
+      // Add the creator if they're not an admin (they're already added if admin)
+      const creatorResult = await client.query(`
+        SELECT id, role FROM users WHERE id = $1
+      `, [insertProject.createdBy]);
+      
+      if (creatorResult.rowCount > 0) {
+        const creator = creatorResult.rows[0];
+        if (creator.role !== UserRole.ADMIN) {
+          await client.query(`
+            INSERT INTO project_members (project_id, user_id)
+            VALUES ($1, $2)
+            ON CONFLICT (project_id, user_id) DO NOTHING
+          `, [project.id, creator.id]);
+        }
+      }
+      
+      // Create default columns for the project
+      const defaultColumns = [
+        { name: 'Ideation', order: 0 },
+        { name: 'Pre-Production', order: 1 },
+        { name: 'Production', order: 2 },
+        { name: 'Post-Production', order: 3 }
+      ];
+      
+      for (const column of defaultColumns) {
+        await client.query(`
+          INSERT INTO columns (name, project_id, "order")
+          VALUES ($1, $2, $3)
+        `, [column.name, project.id, column.order]);
+      }
+      
+      // Commit the transaction
+      await client.query('COMMIT');
+      
+      return project;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Error creating project:', error);
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async updateProject(id: number, updates: Partial<InsertProject>): Promise<Project | undefined> {
