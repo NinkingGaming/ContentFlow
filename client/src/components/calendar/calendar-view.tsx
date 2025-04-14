@@ -108,8 +108,9 @@ export function CalendarView({ projectId }: CalendarViewProps) {
       // This is a template event, create a new one
       const eventInput: ScheduleEventInput = {
         title: eventData.title,
-        type: eventData.type,
-        date: date.toISOString(),
+        type: eventData.type as "filming_day" | "upload_day" | "secondary_filming_day",
+        date: date,
+        notes: null,
         color: eventData.color,
       };
       
@@ -121,7 +122,7 @@ export function CalendarView({ projectId }: CalendarViewProps) {
       // This is an existing event, update its date
       updateEvent({
         eventId: eventData.id,
-        data: { date: date.toISOString() }
+        data: { date: date }
       });
     }
   };
@@ -156,9 +157,9 @@ export function CalendarView({ projectId }: CalendarViewProps) {
     // Create the event
     const eventInput: ScheduleEventInput = {
       title,
-      type: newEventType,
-      date: selectedDate.toISOString(),
-      notes: eventNotes || undefined,
+      type: newEventType as "filming_day" | "upload_day" | "secondary_filming_day",
+      date: selectedDate,
+      notes: eventNotes || null,
       color,
     };
     

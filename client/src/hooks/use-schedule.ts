@@ -46,7 +46,7 @@ export function useSchedule(projectId: number) {
   const updateMutation = useMutation({
     mutationFn: async ({ eventId, data }: UpdateEventParams) => {
       const response = await apiRequest(
-        "PATCH", 
+        "PUT", 
         `/api/projects/${projectId}/schedule/${eventId}`, 
         data
       );
