@@ -58,6 +58,8 @@ export function useScriptData(projectId: number) {
       });
     },
     onSuccess: (data) => {
+      // Set the query data manually instead of invalidating the query
+      // This prevents automatic refetching and overwrites
       queryClient.setQueryData(queryKey, data);
       // We don't show a toast on every update as it would be too frequent and annoying
     },

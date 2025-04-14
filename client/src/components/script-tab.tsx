@@ -63,9 +63,13 @@ export function ScriptTab({ projectId }: { projectId: number }) {
     isUpdating
   } = useScriptData(projectId);
   
-  // Load script data from the server if available
+  // Load script data from the server only on initial load
+  const initialDataLoadedRef = useRef(false);
   useEffect(() => {
-    if (scriptData) {
+    // Only load the data from the server on initial mount or if data is empty
+    if (scriptData && (!initialDataLoadedRef.current || spreadsheetData.length <= 1)) {
+      initialDataLoadedRef.current = true;
+      
       // Set all the local state from the server data
       setScriptContent(scriptData.scriptContent);
       setFinalContent(scriptData.finalContent || "<p>Final formatted content will appear here...</p>");
