@@ -305,6 +305,25 @@ export type ChatMessageWithSender = ChatMessage & {
   sender: User;
 };
 
+// Published finals table
+export const publishedFinals = pgTable("published_finals", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  version: integer("version").notNull(),
+  publishedAt: timestamp("published_at").notNull().defaultNow(),
+  publishedBy: integer("published_by").notNull().references(() => users.id),
+});
+
+export const insertPublishedFinalSchema = createInsertSchema(publishedFinals).omit({
+  id: true,
+  publishedAt: true,
+});
+
+export type PublishedFinal = typeof publishedFinals.$inferSelect;
+export type InsertPublishedFinal = z.infer<typeof insertPublishedFinalSchema>;
+
 // Custom script data types
 export interface ScriptCorrelation {
   textId: string;

@@ -9,11 +9,14 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FilePicker } from "@/components/files-tab";
 import { useScriptData } from "@/hooks/use-script-data";
+import { useAuth } from "@/hooks/use-auth";
 import { 
   type ScriptCorrelation, 
-  type SpreadsheetRow 
+  type SpreadsheetRow,
+  type PublishedFinal
 } from "@shared/schema";
 import {
   Bold,
@@ -33,15 +36,19 @@ import {
   CheckSquare,
   Send,
   Camera,
-  FileVideo
+  FileVideo,
+  Download,
+  Eye
 } from "lucide-react";
 
 export function ScriptTab({ projectId }: { projectId: number }) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState("script");
+  const [activeTab, setActiveTab] = useState("sheet");
   const [scriptContent, setScriptContent] = useState("<p>Enter your script here...</p>");
   const [finalContent, setFinalContent] = useState("<p>Final formatted content will appear here...</p>");
+  const [publishedFinals, setPublishedFinals] = useState<PublishedFinal[]>([]);
   const [spreadsheetData, setSpreadsheetData] = useState<SpreadsheetRow[]>([
     { id: 1, generalData: "", shotNumber: 1, shotData1: "", shotData2: "", shotData3: "", shotData4: "", hasCorrelation: false }
   ]);
@@ -50,6 +57,8 @@ export function ScriptTab({ projectId }: { projectId: number }) {
   const [selectedText, setSelectedText] = useState("");
   const [correlationDialogOpen, setCorrelationDialogOpen] = useState(false);
   const [shotForCorrelation, setShotForCorrelation] = useState<number | null>(null);
+  const [finalViewDialogOpen, setFinalViewDialogOpen] = useState(false);
+  const [selectedFinal, setSelectedFinal] = useState<PublishedFinal | null>(null);
   
   const scriptEditorRef = useRef<HTMLDivElement>(null);
   const microEditorRef = useRef<HTMLTextAreaElement>(null);
@@ -401,52 +410,158 @@ export function ScriptTab({ projectId }: { projectId: number }) {
       
       {/* Script editor tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-3">
-          <TabsTrigger value="script">Script</TabsTrigger>
+        <TabsList className="grid grid-cols-4">
+          <TabsTrigger value="sheet">Sheet</TabsTrigger>
           <TabsTrigger value="micro">Micro</TabsTrigger>
-          <TabsTrigger value="final">Final</TabsTrigger>
+          <TabsTrigger value="script">Script</TabsTrigger>
+          <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
         
-        {/* Script Tab */}
-        <TabsContent value="script" className="space-y-4">
-          <div className="flex flex-wrap gap-1 border-b pb-2">
-            <Button variant="outline" size="sm" onClick={() => formatText('bold')}>
-              <Bold className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => formatText('italic')}>
-              <Italic className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => formatText('underline')}>
-              <Underline className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => formatText('justifyLeft')}>
-              <AlignLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => formatText('justifyCenter')}>
-              <AlignCenter className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => formatText('justifyRight')}>
-              <AlignRight className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => formatText('insertUnorderedList')}>
-              <List className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => formatText('insertOrderedList')}>
-              <ListOrdered className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => handleCorrelateText()}>
-              <Camera className="h-4 w-4 mr-1" />
-              Correlate
-            </Button>
+        {/* Sheet Tab - Only show the spreadsheet */}
+        <TabsContent value="sheet" className="space-y-4">
+          <div className="border rounded-md overflow-hidden">
+            <div className="bg-neutral-100 p-2 font-medium text-sm">Shot Data</div>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-neutral-50">
+                    <th className="border p-2 text-left">Scene</th>
+                    <th className="border p-2 text-left">Shot #</th>
+                    <th className="border p-2 text-left">Slug</th>
+                    <th className="border p-2 text-left">On-Screen</th>
+                    <th className="border p-2 text-left">Cam. Op.</th>
+                    <th className="border p-2 text-left">Location</th>
+                    <th className="border p-2 text-left">Linked</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {spreadsheetData.map((row) => (
+                    <tr key={row.id}>
+                      <td className="border p-2">
+                        <Input 
+                          value={row.generalData} 
+                          onChange={(e) => updateCell(row.id, 'generalData', e.target.value)}
+                          className="border-0 h-8 p-1"
+                        />
+                      </td>
+                      <td className="border p-2 text-center">{row.shotNumber}</td>
+                      <td className="border p-2">
+                        <Input 
+                          value={row.shotData1} 
+                          onChange={(e) => updateCell(row.id, 'shotData1', e.target.value)}
+                          className="border-0 h-8 p-1"
+                        />
+                      </td>
+                      <td className="border p-2">
+                        <Input 
+                          value={row.shotData2} 
+                          onChange={(e) => updateCell(row.id, 'shotData2', e.target.value)}
+                          className="border-0 h-8 p-1"
+                        />
+                      </td>
+                      <td className="border p-2">
+                        <Input 
+                          value={row.shotData3} 
+                          onChange={(e) => updateCell(row.id, 'shotData3', e.target.value)}
+                          className="border-0 h-8 p-1"
+                        />
+                      </td>
+                      <td className="border p-2">
+                        <Input 
+                          value={row.shotData4} 
+                          onChange={(e) => updateCell(row.id, 'shotData4', e.target.value)}
+                          className="border-0 h-8 p-1"
+                        />
+                      </td>
+                      <td className="border p-2 text-center">
+                        {row.hasCorrelation && (
+                          <span 
+                            className="cursor-pointer text-blue-500" 
+                            onClick={() => {
+                              setCurrentShotIndex(spreadsheetData.findIndex(r => r.id === row.id));
+                              setActiveTab("micro");
+                            }}
+                          >
+                            📝
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="p-2 border-t">
+              <Button variant="outline" size="sm" onClick={addSpreadsheetRow}>
+                <Plus className="h-4 w-4 mr-1" />
+                Add Row
+              </Button>
+            </div>
           </div>
-          
-          <div
-            ref={scriptEditorRef}
-            contentEditable
-            onInput={handleScriptContentChange}
-            className="min-h-[400px] border rounded p-4 focus:outline-none focus:ring-2 focus:ring-primary"
-            dangerouslySetInnerHTML={{ __html: scriptContent }}
-          />
+        </TabsContent>
+        
+        {/* Script Tab - Combined Script and Final */}
+        <TabsContent value="script" className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            {/* Left side: Script editor */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold">Script</h3>
+                <div className="flex flex-wrap gap-1">
+                  <Button variant="outline" size="sm" onClick={() => formatText('bold')}>
+                    <Bold className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => formatText('italic')}>
+                    <Italic className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => formatText('underline')}>
+                    <Underline className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleCorrelateText()}>
+                    <Camera className="h-4 w-4 mr-1" />
+                    Correlate
+                  </Button>
+                </div>
+              </div>
+              
+              <div
+                ref={scriptEditorRef}
+                contentEditable
+                onInput={handleScriptContentChange}
+                className="min-h-[600px] border rounded p-4 focus:outline-none focus:ring-2 focus:ring-primary"
+                dangerouslySetInnerHTML={{ __html: scriptContent }}
+              />
+            </div>
+            
+            {/* Right side: Final editor */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold">Final</h3>
+                <div className="flex flex-wrap gap-1">
+                  <Button variant="outline" size="sm" onClick={() => formatText('bold')}>
+                    <Bold className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => formatText('italic')}>
+                    <Italic className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => formatText('underline')}>
+                    <Underline className="h-4 w-4" />
+                  </Button>
+                  <Button variant="primary" size="sm" onClick={publishFinal}>
+                    <FileText className="h-4 w-4 mr-1" />
+                    Publish Final
+                  </Button>
+                </div>
+              </div>
+              
+              <div
+                ref={finalEditorRef}
+                contentEditable
+                className="min-h-[600px] border rounded p-4 focus:outline-none focus:ring-2 focus:ring-primary"
+                dangerouslySetInnerHTML={{ __html: finalContent }}
+              />
+            </div>
+          </div>
         </TabsContent>
         
         {/* Micro Tab */}
@@ -554,36 +669,84 @@ export function ScriptTab({ projectId }: { projectId: number }) {
           )}
         </TabsContent>
         
-        {/* Final Tab */}
-        <TabsContent value="final" className="space-y-4">
-          <div className="flex flex-wrap gap-1 border-b pb-2">
-            <Button variant="outline" size="sm" onClick={() => formatText('bold')}>
-              <Bold className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => formatText('italic')}>
-              <Italic className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => formatText('underline')}>
-              <Underline className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => formatText('justifyLeft')}>
-              <AlignLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => formatText('justifyCenter')}>
-              <AlignCenter className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => formatText('justifyRight')}>
-              <AlignRight className="h-4 w-4" />
-            </Button>
+        {/* Documents Tab - Shows published finals */}
+        <TabsContent value="documents" className="space-y-4">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">Published Documents</h3>
           </div>
           
-          <div
-            ref={finalEditorRef}
-            contentEditable
-            className="min-h-[400px] border rounded p-4 focus:outline-none focus:ring-2 focus:ring-primary"
-            dangerouslySetInnerHTML={{ __html: finalContent }}
-          />
+          {publishedFinals.length > 0 ? (
+            <Table>
+              <TableCaption>All published final documents</TableCaption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Version</TableHead>
+                  <TableHead>Published By</TableHead>
+                  <TableHead>Published At</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {publishedFinals.map((doc) => (
+                  <TableRow key={doc.id}>
+                    <TableCell className="font-medium">{doc.title}</TableCell>
+                    <TableCell>V{doc.version}</TableCell>
+                    <TableCell>{doc.publishedBy}</TableCell>
+                    <TableCell>{new Date(doc.publishedAt).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="outline" size="sm" className="mr-2" onClick={() => viewFinal(doc)}>
+                        <Eye className="h-4 w-4 mr-1" />
+                        View
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Download className="h-4 w-4 mr-1" />
+                        Download
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <Card>
+              <CardContent className="py-10 text-center">
+                <p className="text-muted-foreground mb-4">No published documents yet</p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Go to the Script tab and click "Publish Final" to create your first document
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
+        
+        {/* Final View Dialog */}
+        <Dialog open={finalViewDialogOpen} onOpenChange={setFinalViewDialogOpen}>
+          <DialogContent className="max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>
+                {selectedFinal?.title} - V{selectedFinal?.version}
+              </DialogTitle>
+              <DialogDescription>
+                Published by {selectedFinal?.publishedBy} on {selectedFinal?.publishedAt && new Date(selectedFinal.publishedAt).toLocaleDateString()}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[70vh] overflow-y-auto border rounded p-4 my-4">
+              {selectedFinal && (
+                <div dangerouslySetInnerHTML={{ __html: selectedFinal.content }} />
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setFinalViewDialogOpen(false)}>
+                Close
+              </Button>
+              <Button variant="outline">
+                <Download className="h-4 w-4 mr-1" />
+                Download
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </Tabs>
       
       {/* Correlation Dialog */}
