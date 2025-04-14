@@ -18,9 +18,10 @@ export function EventSource({ events, onCreateEvent }: EventSourceProps) {
       projectId: 0,
       title: hasFilmingDay ? "Secondary Filming Day" : "Filming Day",
       type: hasFilmingDay ? "secondary_filming_day" : "filming_day",
-      date: new Date().toISOString(),
+      date: new Date(),
+      notes: null,
       color: hasFilmingDay ? "#3B82F6" : "#EF4444", // blue if secondary, red if primary
-      createdAt: new Date().toISOString(),
+      createdAt: new Date(),
       createdBy: 0,
     },
     {
@@ -28,9 +29,10 @@ export function EventSource({ events, onCreateEvent }: EventSourceProps) {
       projectId: 0,
       title: "Upload Day",
       type: "upload_day",
-      date: new Date().toISOString(),
+      date: new Date(),
+      notes: null,
       color: "#10B981", // green
-      createdAt: new Date().toISOString(),
+      createdAt: new Date(),
       createdBy: 0,
     }
   ];

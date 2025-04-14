@@ -16,6 +16,7 @@ import {
   chatMessages, type ChatMessage, type InsertChatMessage,
   type ChatMessageWithSender, type ChatChannelWithMembers,
   publishedFinals, type PublishedFinal, type InsertPublishedFinal,
+  scheduleEvents, type ScheduleEvent, type InsertScheduleEvent,
   UserRole
 } from "@shared/schema";
 import { db, pool } from "./db";

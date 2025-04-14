@@ -8,7 +8,7 @@ import {
   insertContentSchema, insertAttachmentSchema, insertYoutubeVideoSchema,
   insertProjectFileSchema, insertProjectFolderSchema, insertScriptDataSchema,
   insertChatChannelSchema, insertChatChannelMemberSchema, insertChatMessageSchema,
-  UserRole
+  insertScheduleEventSchema, UserRole
 } from "../shared/schema";
 import { z } from "zod";
 import { ZodError } from "zod";
