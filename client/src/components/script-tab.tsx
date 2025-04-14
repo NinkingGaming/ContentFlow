@@ -284,6 +284,20 @@ export function ScriptTab({ projectId }: { projectId: number }) {
     }
   };
   
+  // Fetch published finals
+  useEffect(() => {
+    // In a real implementation, this would fetch from the server
+    // For now, we'll just use a mock fetch from local storage
+    const storedFinals = localStorage.getItem(`project-${projectId}-finals`);
+    if (storedFinals) {
+      try {
+        setPublishedFinals(JSON.parse(storedFinals));
+      } catch (error) {
+        console.error("Failed to parse stored finals", error);
+      }
+    }
+  }, [projectId]);
+
   // Send current shot to final
   const sendToFinal = () => {
     const currentShot = spreadsheetData[currentShotIndex];
@@ -313,6 +327,80 @@ export function ScriptTab({ projectId }: { projectId: number }) {
     }
     
     saveData();
+  };
+  
+  // View a published final
+  const viewFinal = (doc: PublishedFinal) => {
+    setSelectedFinal(doc);
+    setFinalViewDialogOpen(true);
+  };
+  
+  // Publish the current final content to the Documents tab
+  const publishFinal = () => {
+    if (!finalContent || finalContent === "<p>Final formatted content will appear here...</p>") {
+      toast({
+        title: "Cannot Publish Empty Document",
+        description: "Please add content to your final before publishing.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to publish documents.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Get the current date for the document title
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+    
+    // Determine the version number by checking existing documents
+    let version = 1;
+    const existingDocs = publishedFinals.filter(doc => 
+      doc.title.startsWith(`Final Script - ${dateStr}`)
+    );
+    
+    if (existingDocs.length > 0) {
+      // Extract versions from existing docs with the same date
+      const versions = existingDocs.map(doc => doc.version);
+      version = Math.max(...versions) + 1;
+    }
+    
+    // Create the new published final
+    const newFinal: PublishedFinal = {
+      id: Date.now(), // In a real implementation, this would be from the server
+      projectId: projectId,
+      title: `Final Script - ${dateStr}`,
+      content: finalContent,
+      version: version,
+      publishedAt: now,
+      publishedBy: user.id
+    };
+    
+    // Add the new final to the list
+    const updatedFinals = [...publishedFinals, newFinal];
+    setPublishedFinals(updatedFinals);
+    
+    // In a real implementation, this would be saved to the server
+    // For now, we'll just use local storage
+    localStorage.setItem(`project-${projectId}-finals`, JSON.stringify(updatedFinals));
+    
+    toast({
+      title: "Document Published",
+      description: `Version ${version} has been published to the Documents tab.`,
+    });
+    
+    // Switch to the documents tab
+    setActiveTab("documents");
   };
   
   return (
@@ -547,7 +635,7 @@ export function ScriptTab({ projectId }: { projectId: number }) {
                   <Button variant="outline" size="sm" onClick={() => formatText('underline')}>
                     <Underline className="h-4 w-4" />
                   </Button>
-                  <Button variant="primary" size="sm" onClick={publishFinal}>
+                  <Button variant="default" size="sm" onClick={publishFinal}>
                     <FileText className="h-4 w-4 mr-1" />
                     Publish Final
                   </Button>
