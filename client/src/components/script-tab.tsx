@@ -63,11 +63,20 @@ export function ScriptTab({ projectId }: { projectId: number }) {
     isUpdating
   } = useScriptData(projectId);
   
-  // Load script data from the server only on initial load
+  // Load script data from the server ONLY on initial load
   const initialDataLoadedRef = useRef(false);
+  
+  // Initial effect that marks the component as mounted
   useEffect(() => {
-    // Only load the data from the server on initial mount or if data is empty
-    if (scriptData && (!initialDataLoadedRef.current || spreadsheetData.length <= 1)) {
+    // This will run once when the component mounts
+    // But we don't try to access scriptData yet since it might not be loaded
+    console.log("ScriptTab component mounted");
+  }, []);
+  
+  // This effect only runs once when scriptData becomes available
+  useEffect(() => {
+    // Only load data from server once and when scriptData is available
+    if (scriptData && !initialDataLoadedRef.current) {
       initialDataLoadedRef.current = true;
       
       // Set all the local state from the server data
@@ -90,6 +99,8 @@ export function ScriptTab({ projectId }: { projectId: number }) {
       if (finalEditorRef.current) {
         finalEditorRef.current.innerHTML = scriptData.finalContent || "<p>Final formatted content will appear here...</p>";
       }
+      
+      console.log("Initial script data loaded");
     }
   }, [scriptData]);
   

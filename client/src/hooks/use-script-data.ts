@@ -21,7 +21,10 @@ export function useScriptData(projectId: number) {
     queryKey,
     retry: false,
     throwOnError: false,
-    staleTime: 10 * 1000, // 10 seconds - relatively low because we want collaborative editing
+    staleTime: Infinity, // Never treat data as stale to prevent auto-refetching
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,  // Prevent refetching when component remounts
+    refetchOnReconnect: false, // Prevent refetching on reconnection
   });
   
   // Create script data mutation
@@ -32,8 +35,9 @@ export function useScriptData(projectId: number) {
         body: JSON.stringify(data),
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey });
+    onSuccess: (data) => {
+      // Set the data directly instead of invalidating the query
+      queryClient.setQueryData(queryKey, data);
       toast({
         title: "Script data created",
         description: "Script data has been saved successfully.",
