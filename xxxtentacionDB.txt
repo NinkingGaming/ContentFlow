@@ -1,0 +1,2 @@
+DATABASE_URL=postgresql://mastercontrol:eEpPrr87YyY!!!@localhost:5432/bluevision
+SESSION_SECRET=KgfXDmd1NW
